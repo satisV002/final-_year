@@ -1,46 +1,44 @@
 // src/types/index.ts
-// ────────────────────────────────────────────────────────────────
-// Shared Type Definitions for Groundwater Analysis & Prediction System
-// Used by both backend (Mongoose) and frontend (API responses, props)
-// ────────────────────────────────────────────────────────────────
+// Shared types for the entire project (backend + frontend)
+// Updated with User types for authentication
 
 import { InferSchemaType, Schema } from 'mongoose';
 
-// ======================
-// Location / Address Structure
-// ======================
+// ────────────────────────────────────────────────────────────────
+// Location Structure (used in Groundwater)
+// ────────────────────────────────────────────────────────────────
 export interface ILocation {
-  state: string;                    // "Andhra Pradesh", "Tamil Nadu", etc.
-  district?: string;                // "East Godavari", "Chennai", etc.
-  block?: string;                   // Mandal / Block / Taluk
-  village?: string;                 // Village / Place / Town name
-  pinCode?: string;                 // "533001", "600001", etc.
-  stationId?: string;               // WRIS/CGWB monitoring station code
-  coordinates?: {                   // GeoJSON Point format for maps
+  state: string;
+  district?: string;
+  block?: string;
+  village?: string;
+  pinCode?: string;
+  stationId?: string;
+  coordinates?: {
     type: 'Point';
-    coordinates: [number, number];  // [longitude, latitude]
+    coordinates: [number, number]; // [lng, lat]
   };
 }
 
-// ======================
-// Core Groundwater Measurement
-// ======================
+// ────────────────────────────────────────────────────────────────
+// Groundwater Data (core measurement)
+// ────────────────────────────────────────────────────────────────
 export interface IGroundwaterData {
-  _id?: string;                     // MongoDB _id (string in responses)
+  _id?: string;
   location: ILocation;
-  date: Date | string;              // ISO string in API responses, Date in DB
-  waterLevelMbgl: number;           // Depth in meters below ground level
-  availabilityBcm?: number;         // Billion cubic meters (district/state level)
+  date: Date | string;
+  waterLevelMbgl: number;
+  availabilityBcm?: number;
   trend?: 'Rising' | 'Falling' | 'Stable' | null;
   source: 'WRIS' | 'CGWB' | 'StatePortal' | 'Manual' | 'Other';
-  quality?: Record<string, number>; // Flexible: pH, TDS, EC, etc. (future)
+  quality?: Record<string, number>;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-// ======================
-// Query / Filter Parameters (for GET /api/groundwater)
-// ======================
+// ────────────────────────────────────────────────────────────────
+// Filter Interface for queries
+// ────────────────────────────────────────────────────────────────
 export interface IGroundwaterFilter {
   state?: string;
   district?: string;
@@ -48,25 +46,25 @@ export interface IGroundwaterFilter {
   village?: string;
   pinCode?: string;
   stationId?: string;
-  fromDate?: string;                // ISO date string
+  fromDate?: string;
   toDate?: string;
-  pastDays?: number;                // e.g. 3 → last 3 months/days
-  futureDays?: number;              // for showing prediction range
-  limit?: number;                   // pagination
+  pastDays?: number;
+  futureDays?: number;
+  limit?: number;
   page?: number;
-  sort?: string;                    // e.g. "date:-1", "waterLevelMbgl:1"
+  sort?: string;
 }
 
-// ======================
-// ML Prediction Output
-// ======================
+// ────────────────────────────────────────────────────────────────
+// Prediction Types (placeholder for ML)
+// ────────────────────────────────────────────────────────────────
 export interface IPredictionPoint {
   date: Date | string;
   predictedMbgl: number;
-  lowerBound?: number;              // optional confidence interval
+  lowerBound?: number;
   upperBound?: number;
-  confidence?: number;              // 0–100%
-  note?: string;                    // "Based on ARIMA / LSTM"
+  confidence?: number;
+  note?: string;
 }
 
 export interface IPredictionResult {
@@ -79,9 +77,9 @@ export interface IPredictionResult {
   };
 }
 
-// ======================
-// API Response Shapes
-// ======================
+// ────────────────────────────────────────────────────────────────
+// API Response Shape
+// ────────────────────────────────────────────────────────────────
 export interface GroundwaterApiResponse {
   success: boolean;
   data: IGroundwaterData[];
@@ -92,20 +90,13 @@ export interface GroundwaterApiResponse {
     maxMbgl: number;
     status: 'Safe' | 'Semi-Critical' | 'Critical' | 'Over-Exploited';
     totalRecords: number;
-    filteredCount: number;
-  };
-  pagination?: {
-    page: number;
-    limit: number;
-    totalPages: number;
-    total: number;
   };
   error?: string;
 }
 
-// ======================
-// Mongoose Schema Definition (used in models)
-// ======================
+// ────────────────────────────────────────────────────────────────
+// Mongoose Schema Definition (shared)
+// ────────────────────────────────────────────────────────────────
 export const GroundwaterSchemaDefinition = {
   location: {
     state: { type: String, required: true, trim: true, index: true },
@@ -116,39 +107,68 @@ export const GroundwaterSchemaDefinition = {
     stationId: { type: String, sparse: true, index: true },
     coordinates: {
       type: { type: String, enum: ['Point'], default: 'Point' },
-      coordinates: { type: [Number], default: undefined }, // [lng, lat]
+      coordinates: { type: [Number], default: undefined },
     },
   },
   date: { type: Date, required: true, index: true },
   waterLevelMbgl: { type: Number, required: true },
   availabilityBcm: { type: Number, sparse: true },
-  trend: {
-    type: String,
-    enum: ['Rising', 'Falling', 'Stable'],
-    sparse: true,
-  },
-  source: {
-    type: String,
-    required: true,
-    enum: ['WRIS', 'CGWB', 'StatePortal', 'Manual', 'Other'],
-  },
+  trend: { type: String, enum: ['Rising', 'Falling', 'Stable'], sparse: true },
+  source: { type: String, required: true, enum: ['WRIS', 'CGWB', 'StatePortal', 'Manual', 'Other'] },
   quality: { type: Map, of: Number, sparse: true },
 } as const;
 
-// Full schema instance (exported for models)
+// Shared schema instance
 export const GroundwaterSchema = new Schema(GroundwaterSchemaDefinition, {
   timestamps: true,
   toJSON: { virtuals: true },
   toObject: { virtuals: true },
 });
 
-// Compound indexes (very important for performance)
+// ────────────────────────────────────────────────────────────────
+// Compound Indexes (no duplicates)
+// ────────────────────────────────────────────────────────────────
 GroundwaterSchema.index({ 'location.state': 1, date: -1 });
 GroundwaterSchema.index({ 'location.district': 1, 'location.village': 1, date: -1 });
-GroundwaterSchema.index({ 'location.pinCode': 1, date: -1 });
-GroundwaterSchema.index({ 'location.coordinates': '2dsphere' }); // geo queries later
+GroundwaterSchema.index({ 'location.coordinates': '2dsphere' });
 
-// Inferred document type (use in services/controllers)
-export type IGroundwaterDocument = InferSchemaType<typeof GroundwaterSchema> & {
+// Unique index to prevent duplicate entries
+GroundwaterSchema.index(
+  {
+    'location.state': 1,
+    'location.district': 1,
+    'location.village': 1,
+    'location.pinCode': 1,
+    date: 1,
+  },
+  { unique: true, sparse: true }
+);
+
+// ────────────────────────────────────────────────────────────────
+// User Types (for authentication)
+// ────────────────────────────────────────────────────────────────
+export interface IUser {
   _id: string;
-};
+  fullname: string;
+  email: string;
+  password: string; // hashed
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type IUserDocument = IUser & Document;
+
+// ────────────────────────────────────────────────────────────────
+// Auth Response (signup/login)
+// ────────────────────────────────────────────────────────────────
+export interface AuthResponse {
+  success: boolean;
+  token?: string;
+  user?: {
+    id: string;
+    fullname: string;
+    email: string;
+  };
+  message?: string;
+  error?: string;
+}

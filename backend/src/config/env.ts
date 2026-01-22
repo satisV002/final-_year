@@ -1,3 +1,4 @@
+// src/config/env.ts
 import { cleanEnv, str, num, url } from 'envalid';
 import dotenv from 'dotenv';
 
@@ -6,11 +7,13 @@ dotenv.config();
 const envVars = cleanEnv(process.env, {
   NODE_ENV: str({ choices: ['development', 'production', 'test'] as const }),
   PORT: num({ default: 5000 }),
-  MONGODB_URI: url({ desc: 'MongoDB Atlas connection string required' }),
+  MONGODB_URI: url(),
   REDIS_URL: url({ default: 'redis://localhost:6379' }),
   LOG_LEVEL: str({ choices: ['error', 'warn', 'info', 'http', 'debug'] as const, default: 'info' }),
   RATE_LIMIT_WINDOW_MS: num({ default: 15 * 60 * 1000 }),
   RATE_LIMIT_MAX: num({ default: 100 }),
+  JWT_SECRET: str({ desc: 'Required for JWT signing – use a strong secret' }), // Fixed
+  JWT_EXPIRY: str({ default: '1h' }), // Fixed
 });
 
 export const env = {
