@@ -32,6 +32,7 @@ const GroundwaterSchemaInstance = new Schema<IGroundwater>(
     timestamps: true,
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
+    versionKey: false, // clean output
   }
 );
 
@@ -44,8 +45,7 @@ GroundwaterSchemaInstance.pre<IGroundwater>('save', async function () {
   if (this.location?.pinCode) this.location.pinCode = this.location.pinCode.trim();
 });
 
-// Export model
-export const Groundwater: Model<IGroundwater> = mongoose.model<IGroundwater>(
-  'Groundwater',
-  GroundwaterSchemaInstance
-);
+// Export model (hot-reload safe)
+export const Groundwater: Model<IGroundwater> =
+  mongoose.models.Groundwater ||
+  mongoose.model<IGroundwater>('Groundwater', GroundwaterSchemaInstance);

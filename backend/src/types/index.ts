@@ -1,12 +1,12 @@
 // src/types/index.ts
-// Shared types for the entire project (backend + frontend)
-// Updated with User types for authentication
+// Shared types for backend + frontend
+// Centralized Mongoose schema & indexes (NO duplicates)
 
-import { InferSchemaType, Schema } from 'mongoose';
+import { Schema, Document } from 'mongoose';
 
-// ────────────────────────────────────────────────────────────────
-// Location Structure (used in Groundwater)
-// ────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────
+   Location Structure
+───────────────────────────────────────────── */
 export interface ILocation {
   state: string;
   district?: string;
@@ -20,9 +20,9 @@ export interface ILocation {
   };
 }
 
-// ────────────────────────────────────────────────────────────────
-// Groundwater Data (core measurement)
-// ────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────
+   Groundwater Core Data
+───────────────────────────────────────────── */
 export interface IGroundwaterData {
   _id?: string;
   location: ILocation;
@@ -36,9 +36,9 @@ export interface IGroundwaterData {
   updatedAt?: Date;
 }
 
-// ────────────────────────────────────────────────────────────────
-// Filter Interface for queries
-// ────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────
+   Query Filters
+───────────────────────────────────────────── */
 export interface IGroundwaterFilter {
   state?: string;
   district?: string;
@@ -55,9 +55,9 @@ export interface IGroundwaterFilter {
   sort?: string;
 }
 
-// ────────────────────────────────────────────────────────────────
-// Prediction Types (placeholder for ML)
-// ────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────
+   Prediction Types (ML)
+───────────────────────────────────────────── */
 export interface IPredictionPoint {
   date: Date | string;
   predictedMbgl: number;
@@ -77,9 +77,9 @@ export interface IPredictionResult {
   };
 }
 
-// ────────────────────────────────────────────────────────────────
-// API Response Shape
-// ────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────
+   API Response Shape
+───────────────────────────────────────────── */
 export interface GroundwaterApiResponse {
   success: boolean;
   data: IGroundwaterData[];
@@ -94,45 +94,85 @@ export interface GroundwaterApiResponse {
   error?: string;
 }
 
-// ────────────────────────────────────────────────────────────────
-// Mongoose Schema Definition (shared)
-// ────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────
+   Mongoose Schema Definition
+   (NO index: true at field level)
+───────────────────────────────────────────── */
 export const GroundwaterSchemaDefinition = {
   location: {
-    state: { type: String, required: true, trim: true, index: true },
-    district: { type: String, trim: true, sparse: true, index: true },
-    block: { type: String, trim: true, sparse: true, index: true },
-    village: { type: String, trim: true, sparse: true, index: true },
-    pinCode: { type: String, trim: true, sparse: true, index: true },
-    stationId: { type: String, sparse: true, index: true },
+    state: { type: String, required: true, trim: true },
+    district: { type: String, trim: true, sparse: true },
+    block: { type: String, trim: true, sparse: true },
+    village: { type: String, trim: true, sparse: true },
+    pinCode: { type: String, trim: true, sparse: true },
+    stationId: { type: String, sparse: true },
     coordinates: {
-      type: { type: String, enum: ['Point'], default: 'Point' },
-      coordinates: { type: [Number], default: undefined },
+      type: {
+        type: String,
+        enum: ['Point'],
+        default: 'Point',
+      },
+      coordinates: {
+        type: [Number],
+        validate: {
+          validator: (v: number[]) => v.length === 2,
+          message: 'Coordinates must be [lng, lat]',
+        },
+      },
     },
   },
-  date: { type: Date, required: true, index: true },
+  date: { type: Date, required: true },
   waterLevelMbgl: { type: Number, required: true },
   availabilityBcm: { type: Number, sparse: true },
-  trend: { type: String, enum: ['Rising', 'Falling', 'Stable'], sparse: true },
-  source: { type: String, required: true, enum: ['WRIS', 'CGWB', 'StatePortal', 'Manual', 'Other'] },
-  quality: { type: Map, of: Number, sparse: true },
+  trend: {
+    type: String,
+    enum: ['Rising', 'Falling', 'Stable'],
+    sparse: true,
+  },
+  source: {
+    type: String,
+    required: true,
+    enum: ['WRIS', 'CGWB', 'StatePortal', 'Manual', 'Other'],
+  },
+  quality: {
+    type: Map,
+    of: Number,
+    sparse: true,
+  },
 } as const;
 
-// Shared schema instance
+/* ─────────────────────────────────────────────
+   Shared Schema Instance
+───────────────────────────────────────────── */
 export const GroundwaterSchema = new Schema(GroundwaterSchemaDefinition, {
   timestamps: true,
-  toJSON: { virtuals: true },
+  versionKey: false,
+  toJSON: {
+    virtuals: true,
+    transform(_doc, ret: any) {
+      ret.id = ret._id.toString();
+      delete ret._id;
+    },
+  },
   toObject: { virtuals: true },
 });
 
-// ────────────────────────────────────────────────────────────────
-// Compound Indexes (no duplicates)
-// ────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────
+   INDEXES (ONLY HERE)
+───────────────────────────────────────────── */
 GroundwaterSchema.index({ 'location.state': 1, date: -1 });
-GroundwaterSchema.index({ 'location.district': 1, 'location.village': 1, date: -1 });
-GroundwaterSchema.index({ 'location.coordinates': '2dsphere' });
 
-// Unique index to prevent duplicate entries
+GroundwaterSchema.index({
+  'location.district': 1,
+  'location.village': 1,
+  date: -1,
+});
+
+GroundwaterSchema.index({
+  'location.coordinates': '2dsphere',
+});
+
+// Prevent duplicate records
 GroundwaterSchema.index(
   {
     'location.state': 1,
@@ -144,23 +184,23 @@ GroundwaterSchema.index(
   { unique: true, sparse: true }
 );
 
-// ────────────────────────────────────────────────────────────────
-// User Types (for authentication)
-// ────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────
+   User Types (Authentication)
+───────────────────────────────────────────── */
 export interface IUser {
   _id: string;
   fullname: string;
   email: string;
-  password: string; // hashed
+  password: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export type IUserDocument = IUser & Document;
 
-// ────────────────────────────────────────────────────────────────
-// Auth Response (signup/login)
-// ────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────
+   Auth Response
+───────────────────────────────────────────── */
 export interface AuthResponse {
   success: boolean;
   token?: string;

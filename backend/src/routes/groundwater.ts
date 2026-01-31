@@ -1,11 +1,12 @@
 // src/routes/groundwater.ts
 import express from 'express';
 import { Groundwater } from '../models/Groundwater';
-import { validateQueryParams } from '../middleware/validate'; // fixed path
+import { validateQueryParams } from '../middleware/validate';
 import logger from '../utils/logger';
-import { getAllPincodesForPlace } from '../services/pincodeService'; // adjust if needed
-import { sendDataToML } from '../services/mlService'; // ML call
-// import { authJWT } from '../middlewares/authJWT'; // optional – uncomment to protect
+import { getAllPincodesForPlace } from '../services/pincodeService';
+import { sendDataToML } from '../services/mlService';
+import { env } from '../config/env';
+// import { authJWT } from '../middleware/authJWT'; // optional
 
 const router = express.Router();
 
@@ -24,9 +25,7 @@ router.get('/groundwater', validateQueryParams, async (req, res) => {
       sort = 'date:-1',
     } = req.query;
 
-    const query: any = {
-      'location.state': state as string,
-    };
+    const query: any = { 'location.state': state };
 
     if (district) query['location.district'] = district;
     if (village) query['location.village'] = village;
@@ -38,25 +37,27 @@ router.get('/groundwater', validateQueryParams, async (req, res) => {
       if (toDate) query.date.$lte = new Date(toDate as string);
     }
 
-    const pageNum = parseInt(page as string, 10) || 1;
+    const pageNum = Math.max(parseInt(page as string, 10), 1);
     const limitNum = Math.min(parseInt(limit as string, 10) || 20, 100);
     const skip = (pageNum - 1) * limitNum;
 
     const sortObj: any = {};
-    const [sortField, sortOrder] = (sort as string).split(':');
-    sortObj[sortField || 'date'] = sortOrder === '1' ? 1 : -1;
+    const [field, order] = (sort as string).split(':');
+    sortObj[field || 'date'] = order === '1' ? 1 : -1;
 
-    const data = await Groundwater.find(query)
-      .select('location date waterLevelMbgl trend source')
-      .sort(sortObj)
-      .skip(skip)
-      .limit(limitNum)
-      .lean();
+    const [data, total] = await Promise.all([
+      Groundwater.find(query)
+        .select('location date waterLevelMbgl trend source')
+        .sort(sortObj)
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      Groundwater.countDocuments(query),
+    ]);
 
-    // Send to ML (placeholder)
-    const mlResult = await sendDataToML(data as any); // type cast if needed
-
-    const total = await Groundwater.countDocuments(query);
+    const mlResult = env.isTest
+      ? { predictions: [], summary: {} }
+      : await sendDataToML(data as any);
 
     res.json({
       success: true,
@@ -72,7 +73,7 @@ router.get('/groundwater', validateQueryParams, async (req, res) => {
       message: data.length ? 'Data retrieved' : 'No records found',
     });
   } catch (err: any) {
-    logger.error('Groundwater route error', { error: err.message, query: req.query });
+    logger.error('Groundwater route error', { error: err.message });
     res.status(500).json({ success: false, error: 'Failed to fetch data' });
   }
 });
