@@ -1,7 +1,7 @@
 // src/routes/auth.ts
 import express from 'express';
 import Joi from 'joi';
-import jwt, { SignOptions } from 'jsonwebtoken'; // FIXED: import SignOptions
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { User } from '../models/User';
 import { AppError } from '../middleware/errorMiddleware';
 import { env } from '../config/env';
@@ -47,21 +47,28 @@ const validate = (schema: Joi.ObjectSchema) => (req: express.Request, res: expre
 
 // Signup
 router.post('/signup', validate(signupSchema), async (req, res, next) => {
+  const start = Date.now();
   try {
+    logger.info('Signup attempt', { email: req.body.email });
+
     const { fullname, email, password } = req.body;
 
     const existing = await User.findOne({ email });
+    logger.debug('User.findOne completed', { found: !!existing, time: Date.now() - start });
+
     if (existing) {
       return next(new AppError('Email already registered', 400));
     }
 
     const user = new User({ fullname, email, password });
     await user.save();
+    logger.debug('User.save completed', { userId: user._id, time: Date.now() - start });
 
+    // FIXED: proper jwt.sign call (no spread ...)
     const token = jwt.sign(
       { id: user._id.toString() },
       env.JWT_SECRET,
-      { expiresIn: env.JWT_EXPIRY || '1h' } as SignOptions // FIXED: explicit type
+      { expiresIn: env.JWT_EXPIRY || '1h' } as SignOptions
     );
 
     res.status(201).json({
@@ -69,18 +76,29 @@ router.post('/signup', validate(signupSchema), async (req, res, next) => {
       token,
       user: { fullname, email },
     });
+
+    logger.info('Signup success', { userId: user._id, duration: Date.now() - start });
   } catch (err: any) {
-    logger.error('Signup error', { error: err.message });
+    logger.error('Signup failed', {
+      error: err.message,
+      stack: err.stack,
+      duration: Date.now() - start,
+    });
     next(new AppError('Signup failed', 500));
   }
 });
 
 // Login
 router.post('/login', validate(loginSchema), async (req, res, next) => {
+  const start = Date.now();
   try {
+    logger.info('Login attempt', { email: req.body.email });
+
     const { email, password } = req.body;
 
     const user = await User.findOne({ email }).select('+password');
+    logger.debug('User.findOne completed', { found: !!user, time: Date.now() - start });
+
     if (!user) {
       return next(new AppError('Invalid email or password', 401));
     }
@@ -90,10 +108,11 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
       return next(new AppError('Invalid email or password', 401));
     }
 
+    // FIXED: proper jwt.sign call
     const token = jwt.sign(
       { id: user._id.toString() },
       env.JWT_SECRET,
-      { expiresIn: env.JWT_EXPIRY || '1h' } as SignOptions // FIXED: explicit type
+      { expiresIn: env.JWT_EXPIRY || '1h' } as SignOptions
     );
 
     res.json({
@@ -101,8 +120,14 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
       token,
       user: { fullname: user.fullname, email: user.email },
     });
+
+    logger.info('Login success', { userId: user._id, duration: Date.now() - start });
   } catch (err: any) {
-    logger.error('Login error', { error: err.message });
+    logger.error('Login failed', {
+      error: err.message,
+      stack: err.stack,
+      duration: Date.now() - start,
+    });
     next(new AppError('Login failed', 500));
   }
 });

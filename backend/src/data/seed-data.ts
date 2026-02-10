@@ -16,7 +16,8 @@ async function seedDatabase() {
     // await Groundwater.deleteMany({ source: 'Manual' });
 
     // Format data to match model
-    const formattedData = initialData.map((item: any) => ({
+    const formattedData = (initialData as any[]).map((item) => ({
+
       location: {
         state: item.location.state,
         district: item.location.district,

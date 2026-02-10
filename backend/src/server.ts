@@ -1,6 +1,5 @@
-// src/server.ts
 import http from 'http';
-import app from './app';
+import createApp from './app';
 import { connectDB } from './config/db';
 import { getRedisClient, closeRedis } from './config/redis';
 import logger from './utils/logger';
@@ -8,17 +7,17 @@ import { env } from './config/env';
 import mongoose from 'mongoose';
 import { setupDailyFetchCron } from './cron/dailyFetch';
 
+const app = createApp();          // ✅ FIX
 const server = http.createServer(app);
 
 const startServer = async () => {
   try {
-    // ❌ TEST MODE lo heavy services run cheyyakudadhu
     if (!env.isTest) {
       await connectDB();
       await getRedisClient();
 
       if (env.isProd) {
-        setupDailyFetchCron(); // ONLY production
+        setupDailyFetchCron();
       }
 
       logger.info('DB + Redis connected');

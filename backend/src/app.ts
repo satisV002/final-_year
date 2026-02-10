@@ -73,6 +73,10 @@ const createApp = (): Express => {
 
   // Global error handler (must be last)
   app.use(errorHandler);
+  
+  app.get('/test-fast', (req, res) => {
+  res.json({ message: 'This should be instant', time: new Date().toISOString() });
+});
 
   return app;
 };
