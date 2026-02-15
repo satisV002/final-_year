@@ -1,6 +1,6 @@
 // src/services/mlService.ts
 import logger from '../utils/logger';
-import { IGroundwaterData } from '../types';
+import { IGroundwaterData } from '../types'; // ← use plain interface
 import { env } from '../config/env';
 
 type MLResponse = {
@@ -16,10 +16,8 @@ type MLResponse = {
 };
 
 export async function sendDataToML(
-  data: IGroundwaterData[]
+  data: IGroundwaterData[]  // ← changed to plain interface
 ): Promise<MLResponse> {
-
-  // ⚡ TEST MODE → RETURN MOCK BUT VALID SHAPE
   if (env.isTest) {
     return {
       predictions: [],
@@ -43,6 +41,7 @@ export async function sendDataToML(
   }));
 
   try {
+    // Your mock logic (replace with real ML call later)
     const predictions = mlInput.map(item => ({
       date: item.date,
       predictedMbgl: Number((item.waterLevelMbgl * 0.95).toFixed(2)),
@@ -52,7 +51,7 @@ export async function sendDataToML(
     return {
       predictions,
       summary: {
-        trend: 'Stable',
+        trend: data.length > 1 ? 'Stable' : 'N/A',
         riskLevel: 'Semi-Critical',
       },
     };

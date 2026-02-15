@@ -1,4 +1,3 @@
-// src/routes/groundwater.ts
 import express from 'express';
 import { Groundwater } from '../models/Groundwater';
 import { validateQueryParams } from '../middleware/validate';
@@ -6,7 +5,7 @@ import logger from '../utils/logger';
 import { getAllPincodesForPlace } from '../services/pincodeService';
 import { sendDataToML } from '../services/mlService';
 import { env } from '../config/env';
-// import { authJWT } from '../middleware/authJWT'; // optional
+import { IGroundwaterData } from '../types';
 
 const router = express.Router();
 
@@ -25,10 +24,10 @@ router.get('/groundwater', validateQueryParams, async (req, res) => {
       sort = 'date:-1',
     } = req.query;
 
-    const query: any = { 'location.state': state };
+    const query: any = { 'location.state': { $regex: new RegExp(state as string, 'i') } };
 
-    if (district) query['location.district'] = district;
-    if (village) query['location.village'] = village;
+    if (district) query['location.district'] = { $regex: new RegExp(district as string, 'i') };
+    if (village) query['location.village'] = { $regex: new RegExp(village as string, 'i') };
     if (pinCode) query['location.pinCode'] = pinCode;
 
     if (fromDate || toDate) {
@@ -51,13 +50,15 @@ router.get('/groundwater', validateQueryParams, async (req, res) => {
         .sort(sortObj)
         .skip(skip)
         .limit(limitNum)
-        .lean(),
+        .lean<IGroundwaterData[]>()   // ← this fixes the type mismatch
+        .exec(),
+
       Groundwater.countDocuments(query),
     ]);
 
     const mlResult = env.isTest
       ? { predictions: [], summary: {} }
-      : await sendDataToML(data as any);
+      : await sendDataToML(data);     // ← no 'as' needed anymore
 
     res.json({
       success: true,
@@ -73,12 +74,12 @@ router.get('/groundwater', validateQueryParams, async (req, res) => {
       message: data.length ? 'Data retrieved' : 'No records found',
     });
   } catch (err: any) {
-    logger.error('Groundwater route error', { error: err.message });
+    logger.error('Groundwater route error', { error: err.message, stack: err.stack });
     res.status(500).json({ success: false, error: 'Failed to fetch data' });
   }
 });
 
-// GET /api/v1/pincodes/suggest
+// GET /api/v1/pincodes/suggest (unchanged)
 router.get('/pincodes/suggest', async (req, res) => {
   const { place, district } = req.query;
 

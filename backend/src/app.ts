@@ -6,7 +6,7 @@ import cors from 'cors';
 import morgan from 'morgan';
 import hpp from 'hpp';
 import rateLimit from 'express-rate-limit';
-import {env} from './config/env';
+import { env } from './config/env';
 import logger from './utils/logger';
 import { notFound, errorHandler } from './middleware/errorMiddleware';
 import { requestLogger } from './middleware/loggerMiddleware';
@@ -68,15 +68,52 @@ const createApp = (): Express => {
     });
   });
 
-  // 404 handler
+  // Test fast (no DB)
+  app.get('/test-fast', (req, res) => {
+    res.json({ message: 'This should be instant', time: new Date().toISOString() });
+  });
+
+  // ────────────────────────────────────────────────
+  // TEMPORARY DEV ROUTE - Fetch WRIS data manually
+  // Remove or comment out in production
+  // ────────────────────────────────────────────────
+  app.get('/dev/fetch-wris', async (req, res) => {
+    try {
+      const state = req.query.state as string;
+
+      if (!state || typeof state !== 'string' || state.trim().length < 3) {
+        return res.status(400).json({
+          success: false,
+          error: 'Valid state name is required (e.g., ?state=Telangana)'
+        });
+      }
+
+      const { fetchAndSaveGroundwaterData } = await import('./services/fetchGroundwater');
+
+      logger.info(`Manual WRIS fetch triggered for state: ${state}`);
+
+      await fetchAndSaveGroundwaterData(state.trim());
+
+      res.json({
+        success: true,
+        message: `Fetch & save attempted for state: ${state}`,
+        note: 'Check server logs for number of records saved or errors'
+      });
+    } catch (err: any) {
+      logger.error('Manual fetch failed', { error: err.message, stack: err.stack });
+      res.status(500).json({
+        success: false,
+        error: 'Fetch failed - check server logs',
+        details: err.message
+      });
+    }
+  });
+
+  // 404 handler (must be after all routes)
   app.use(notFound);
 
   // Global error handler (must be last)
   app.use(errorHandler);
-  
-  app.get('/test-fast', (req, res) => {
-  res.json({ message: 'This should be instant', time: new Date().toISOString() });
-});
 
   return app;
 };
