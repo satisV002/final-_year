@@ -1,5 +1,5 @@
 import { createClient } from 'redis';
-import {env} from './env';
+import { env } from './env';
 import logger from '../utils/logger';
 
 let redisClient: ReturnType<typeof createClient> | null = null;
@@ -24,8 +24,9 @@ export const getRedisClient = async () => {
     await redisClient.ping(); // Verify connection
     logger.info('Redis PING successful');
   } catch (err: any) {
-    logger.error('Redis connection failed', { error: err.message });
-    throw err;
+    logger.warn('Redis connection failed — continuing without Redis cache', { error: err.message });
+    redisClient = null;   // reset so we don't return a broken client
+    return null as any;   // graceful degradation: callers will fall back
   }
 
   return redisClient;

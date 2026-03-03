@@ -17,6 +17,7 @@ router.get('/groundwater', validateQueryParams, async (req, res) => {
       district,
       village,
       pinCode,
+      stationName,  // ← NEW: optional filter by station name
       fromDate,
       toDate,
       page = '1',
@@ -24,11 +25,20 @@ router.get('/groundwater', validateQueryParams, async (req, res) => {
       sort = 'date:-1',
     } = req.query;
 
-    const query: any = { 'location.state': { $regex: new RegExp(state as string, 'i') } };
+    const query: any = {
+      'location.state': { $regex: new RegExp(state as string, 'i') },
+      // COMMENTED OUT — we want to show stations even if water level is null/missing
+      // waterLevelMbgl: { $ne: null, $exists: true },
+    };
 
     if (district) query['location.district'] = { $regex: new RegExp(district as string, 'i') };
     if (village) query['location.village'] = { $regex: new RegExp(village as string, 'i') };
     if (pinCode) query['location.pinCode'] = pinCode;
+
+    // NEW: Filter by station name (partial match)
+    if (stationName && typeof stationName === 'string') {
+      query['location.stationId'] = { $regex: new RegExp(stationName.trim(), 'i') };
+    }
 
     if (fromDate || toDate) {
       query.date = {};
@@ -50,7 +60,7 @@ router.get('/groundwater', validateQueryParams, async (req, res) => {
         .sort(sortObj)
         .skip(skip)
         .limit(limitNum)
-        .lean<IGroundwaterData[]>()   // ← this fixes the type mismatch
+        .lean<IGroundwaterData[]>()
         .exec(),
 
       Groundwater.countDocuments(query),
@@ -58,7 +68,7 @@ router.get('/groundwater', validateQueryParams, async (req, res) => {
 
     const mlResult = env.isTest
       ? { predictions: [], summary: {} }
-      : await sendDataToML(data);     // ← no 'as' needed anymore
+      : await sendDataToML(data);
 
     res.json({
       success: true,
@@ -71,7 +81,9 @@ router.get('/groundwater', validateQueryParams, async (req, res) => {
         totalPages: Math.ceil(total / limitNum),
         totalRecords: total,
       },
-      message: data.length ? 'Data retrieved' : 'No records found',
+      message: data.length 
+        ? 'Stations retrieved from JSON data' 
+        : 'No stations found for the given filters (try different state/district or remove filters)',
     });
   } catch (err: any) {
     logger.error('Groundwater route error', { error: err.message, stack: err.stack });

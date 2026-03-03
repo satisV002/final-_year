@@ -1,6 +1,5 @@
-// src/models/Groundwater.ts
 import mongoose, { Schema, Document, Model } from 'mongoose';
-import { GroundwaterSchemaDefinition, GroundwaterSchema } from '../types';
+import { GroundwaterSchemaDefinition } from '../types';
 
 export interface IGroundwater extends Document {
   location: {
@@ -25,19 +24,35 @@ export interface IGroundwater extends Document {
   updatedAt: Date;
 }
 
-// Use shared schema (no duplicate definitions)
 const GroundwaterSchemaInstance = new Schema<IGroundwater>(
   GroundwaterSchemaDefinition,
   {
     timestamps: true,
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
-    versionKey: false, // clean output
+    versionKey: false,
   }
 );
 
-// Pre-save hook – trim strings
-GroundwaterSchemaInstance.pre<IGroundwater>('save', async function () {
+// ---------------- INDEXES ----------------
+
+// Unique per station per date
+GroundwaterSchemaInstance.index(
+  { 'location.stationId': 1, date: 1 },
+  { unique: true }
+);
+
+// Geo index
+GroundwaterSchemaInstance.index({
+  'location.coordinates': '2dsphere'
+});
+
+// Date index
+GroundwaterSchemaInstance.index({ date: -1 });
+
+// ---------------- PRE SAVE ----------------
+
+GroundwaterSchemaInstance.pre<IGroundwater>('save', function () {
   if (this.location?.state) this.location.state = this.location.state.trim();
   if (this.location?.district) this.location.district = this.location.district.trim();
   if (this.location?.block) this.location.block = this.location.block.trim();
@@ -45,7 +60,6 @@ GroundwaterSchemaInstance.pre<IGroundwater>('save', async function () {
   if (this.location?.pinCode) this.location.pinCode = this.location.pinCode.trim();
 });
 
-// Export model (hot-reload safe)
 export const Groundwater: Model<IGroundwater> =
   mongoose.models.Groundwater ||
   mongoose.model<IGroundwater>('Groundwater', GroundwaterSchemaInstance);

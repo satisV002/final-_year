@@ -14,13 +14,19 @@ const startServer = async () => {
   try {
     if (!env.isTest) {
       await connectDB();
-      await getRedisClient();
+
+      // Redis is optional — failure won't crash the server
+      try {
+        await getRedisClient();
+        logger.info('DB + Redis connected');
+      } catch {
+        logger.warn('Redis unavailable — starting without cache layer');
+        logger.info('DB connected (Redis skipped)');
+      }
 
       if (env.isProd) {
         setupDailyFetchCron();
       }
-
-      logger.info('DB + Redis connected');
     } else {
       logger.info('TEST MODE → DB / Redis / Cron skipped');
     }
@@ -39,8 +45,8 @@ const shutdown = async (signal: string) => {
   server.close();
 
   if (!env.isTest) {
-    await closeRedis().catch(() => {});
-    await mongoose.connection.close().catch(() => {});
+    await closeRedis().catch(() => { });
+    await mongoose.connection.close().catch(() => { });
   }
 
   process.exit(0);

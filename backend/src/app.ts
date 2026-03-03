@@ -80,6 +80,10 @@ const createApp = (): Express => {
   app.get('/dev/fetch-wris', async (req, res) => {
     try {
       const state = req.query.state as string;
+      const district = req.query.district as string;
+      const agencyName = (req.query.agencyName as string) || 'CGWB';
+      const startdate = req.query.startdate as string | undefined;
+      const enddate = req.query.enddate as string | undefined;
 
       if (!state || typeof state !== 'string' || state.trim().length < 3) {
         return res.status(400).json({
@@ -88,11 +92,18 @@ const createApp = (): Express => {
         });
       }
 
+      if (!district || typeof district !== 'string' || district.trim().length < 2) {
+        return res.status(400).json({
+          success: false,
+          error: 'Valid district name is required (e.g., ?district=Hyderabad)'
+        });
+      }
+
       const { fetchAndSaveGroundwaterData } = await import('./services/fetchGroundwater');
 
-      logger.info(`Manual WRIS fetch triggered for state: ${state}`);
+      logger.info(`Manual WRIS fetch triggered for state: ${state}, district: ${district}`);
 
-      await fetchAndSaveGroundwaterData(state.trim());
+      await fetchAndSaveGroundwaterData(state.trim(), district.trim(), agencyName, startdate, enddate);
 
       res.json({
         success: true,
