@@ -12,6 +12,8 @@ import { notFound, errorHandler } from './middleware/errorMiddleware';
 import { requestLogger } from './middleware/loggerMiddleware';
 import groundwaterRouter from './routes/groundwater';
 import authRouter from './routes/auth';
+import liveDataRouter from './routes/liveData';
+import devRoutes from './routes/devRoutes';
 
 const createApp = (): Express => {
   const app = express();
@@ -57,6 +59,8 @@ const createApp = (): Express => {
   // Routes
   app.use('/api/v1/auth', authRouter);          // Public: Signup/Login
   app.use('/api/v1', groundwaterRouter);        // Groundwater endpoints
+  app.use('/api/v1', liveDataRouter);              // Live Data endpoints
+  app.use('/dev', devRoutes);                   // Dev / Self-Test endpoints
 
   // Health check
   app.get('/health', (req, res) => {

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { CloudRain, Droplets, Loader2, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CloudRain, Droplets, Loader2, AlertTriangle, TrendingUp, TrendingDown, Search, Activity } from 'lucide-react';
 import {
     ComposedChart, Bar, Line, XAxis, YAxis, Tooltip,
     ResponsiveContainer, CartesianGrid, Legend
@@ -91,12 +91,51 @@ function RainBackground() {
     );
 }
 
+import { Station, AnalysisResult } from '@/types/station';
+
 export default function RainfallPage() {
     const [filters, setFilters] = useState<Filters>({ state: 'Telangana' });
+    const [allStations, setAllStations] = useState<Station[]>([]);
+    const [selectedStation, setSelectedStation] = useState<Station | null>(null);
+    const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
     const [chartData, setChartData] = useState<ChartPoint[]>([]);
     const [loading, setLoading] = useState(false);
+    const [analysisLoading, setAnalysisLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [correlation, setCorrelation] = useState<number | null>(null);
+
+    // 1. Load initial stations for selection
+    useEffect(() => {
+        const fetchStations = async () => {
+            try {
+                const res = await api.get('/stations');
+                if (res.data.success) setAllStations(res.data.data);
+            } catch (err) {
+                console.error('Failed to load stations', err);
+            }
+        };
+        fetchStations();
+    }, []);
+
+    // 2. Fetch specific analysis when station changes
+    useEffect(() => {
+        if (!selectedStation) {
+            setAnalysis(null);
+            return;
+        }
+        const fetchAnalysis = async () => {
+            setAnalysisLoading(true);
+            try {
+                const res = await api.get(`/analysis/${selectedStation.stationId}`);
+                if (res.data.success) setAnalysis(res.data.data);
+            } catch (err) {
+                console.error('Analysis fetch failed', err);
+            } finally {
+                setAnalysisLoading(false);
+            }
+        };
+        fetchAnalysis();
+    }, [selectedStation]);
 
     const loadData = useCallback(async (f: Filters) => {
         setLoading(true);
@@ -104,7 +143,7 @@ export default function RainfallPage() {
         try {
             const stateName = f.state || 'Telangana';
 
-            // Fetch rainfall from Open-Meteo
+            // Fetch rainfall from Open-Meteo for state overview
             const [rainData, gwRes] = await Promise.all([
                 fetchRainfall(stateName),
                 api.get('/groundwater', { params: { state: stateName, limit: '500', sort: 'date:1' } })
@@ -177,8 +216,31 @@ export default function RainfallPage() {
                 <p className="text-slate-400 text-sm">Correlating rainfall patterns with groundwater levels · Open-Meteo data</p>
             </div>
 
-            <div className="relative z-10">
-                <FilterBar states={INDIA_STATES} value={filters} onChange={setFilters} />
+            <div className="relative z-10 flex flex-col md:flex-row gap-4">
+                <div className="flex-1">
+                    <FilterBar states={INDIA_STATES} value={filters} onChange={setFilters} />
+                </div>
+                <div className="w-full md:w-80">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                        <select
+                            className="w-full pl-10 pr-4 py-2 bg-slate-900 border border-white/10 text-slate-200 text-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/40 appearance-none cursor-pointer"
+                            onChange={(e) => {
+                                const s = allStations.find(st => st.stationId === e.target.value);
+                                setSelectedStation(s || null);
+                            }}
+                            value={selectedStation?.stationId || ''}
+                        >
+                            <option value="">Select Station for Site Analysis...</option>
+                            {allStations
+                                .filter(s => s.stateName === filters.state)
+                                .map(s => (
+                                    <option key={s.stationId} value={s.stationId}>{s.stationName || s.stationId}</option>
+                                ))
+                            }
+                        </select>
+                    </div>
+                </div>
             </div>
 
             {error && (
@@ -187,8 +249,68 @@ export default function RainfallPage() {
                 </div>
             )}
 
-            {/* Correlation insight */}
-            {correlation != null && (
+            {/* Site Specific Analysis Card */}
+            <AnimatePresence>
+                {selectedStation && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="relative z-10 p-1 rounded-3xl bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-white/10"
+                    >
+                        <div className="bg-slate-900/90 backdrop-blur-xl rounded-[22px] p-6">
+                            <div className="flex items-start justify-between mb-6">
+                                <div>
+                                    <h2 className="text-xl font-bold text-white mb-1">Station Analysis: {selectedStation.stationName}</h2>
+                                    <p className="text-xs text-slate-400 uppercase tracking-widest">{selectedStation.districtName}, {selectedStation.stateName}</p>
+                                </div>
+                                <div className="px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full text-[10px] font-bold text-blue-400 uppercase tracking-wider">
+                                    Backend Verified
+                                </div>
+                            </div>
+
+                            {analysisLoading ? (
+                                <div className="py-10 flex flex-col items-center justify-center gap-3">
+                                    <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                                    <p className="text-xs text-slate-400">Consulting historical trends...</p>
+                                </div>
+                            ) : analysis ? (
+                                <div className="grid md:grid-cols-3 gap-6">
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">Groundwater Trend</p>
+                                        <div className="flex items-center gap-3">
+                                            {analysis.groundwaterTrend === 'Increasing' ? <TrendingUp className="w-5 h-5 text-green-400" /> : <TrendingDown className="w-5 h-5 text-red-400" />}
+                                            <span className={`text-lg font-bold ${analysis.groundwaterTrend === 'Increasing' ? 'text-green-400' : 'text-red-400'}`}>
+                                                {analysis.groundwaterTrend}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">Historical Rainfall</p>
+                                        <div className="flex items-center gap-3">
+                                            <CloudRain className="w-5 h-5 text-blue-400" />
+                                            <span className="text-lg font-bold text-blue-300">{analysis.rainfallTrend}</span>
+                                        </div>
+                                    </div>
+                                    <div className="md:col-span-1 p-4 bg-white/5 border border-white/5 rounded-2xl">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <Activity className="w-4 h-4 text-cyan-400" />
+                                            <span className="text-[10px] uppercase font-bold text-cyan-400">Strategic Insight</span>
+                                        </div>
+                                        <p className="text-sm text-slate-300 leading-relaxed font-medium">
+                                            {analysis.impact}
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <p className="text-slate-500 text-sm italic">Select a station to view backend-verified analysis.</p>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Correlation insight (Statewide) */}
+            {!selectedStation && correlation != null && (
                 <motion.div
                     className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-4"
                     initial={{ opacity: 0, y: 10 }}
@@ -233,8 +355,8 @@ export default function RainfallPage() {
                             <YAxis yAxisId="right" orientation="right" reversed tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={v => `${v}m`} />
                             <Tooltip content={<CustomTooltip />} />
                             <Legend wrapperStyle={{ fontSize: '12px', color: '#94a3b8' }} />
-                            <Bar yAxisId="left" dataKey="rainfall" fill="#3b82f6" opacity={0.7} radius={[2, 2, 0, 0]} name="Rainfall (mm)" maxBarSize={30} />
-                            <Line yAxisId="right" type="monotone" dataKey="waterLevel" stroke="#06b6d4" strokeWidth={2.5} dot={{ r: 3, fill: '#06b6d4' }} name="Water Level (m MBGL)" connectNulls />
+                            <Bar yAxisId="left" dataKey="rainfall" fill="#3b82f6" opacity={0.7} radius={[2, 2, 0, 0]} name="Rainfall (mm)" maxBarSize={30} animationDuration={1500} />
+                            <Line yAxisId="right" type="monotone" dataKey="waterLevel" stroke="#06b6d4" strokeWidth={2.5} dot={{ r: 3, fill: '#06b6d4' }} name="Water Level (m MBGL)" connectNulls animationDuration={1500} />
                         </ComposedChart>
                     </ResponsiveContainer>
                 ) : (

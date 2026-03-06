@@ -22,7 +22,8 @@ export function setupDailyFetchCron() {
     for (const state of STATES_TO_FETCH) {
       try {
         logger.info(`Fetching groundwater data for: ${state}`);
-        await fetchAndSaveGroundwaterData(state);
+        // pass an empty district so that the service can decide how to handle it
+        await fetchAndSaveGroundwaterData(state, '');
         logger.info(`✅ Successfully fetched & saved data for ${state}`);
       } catch (error: any) {
         logger.error(`❌ Fetch failed for ${state}`, {

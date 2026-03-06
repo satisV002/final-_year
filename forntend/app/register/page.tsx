@@ -63,7 +63,9 @@ export default function RegisterPage() {
         if (!fullname.trim() || fullname.trim().length < 3) errs.fullname = 'At least 3 characters';
         if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = 'Enter a valid email';
         if (!password || password.length < 8) errs.password = 'At least 8 characters';
-        else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) errs.password = 'Need uppercase, lowercase, number';
+        else if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password)) {
+            errs.password = 'Need uppercase, lowercase, and a number';
+        }
         if (password !== confirm) errs.confirm = 'Passwords do not match';
         return errs;
     };
@@ -77,7 +79,7 @@ export default function RegisterPage() {
         try {
             await register(fullname.trim(), email, password);
             setIsSuccess(true);
-            setTimeout(() => router.push('/overview'), 1200);
+            setTimeout(() => router.push('/home'), 1200);
         } catch { /* error shown via context */ }
     };
 

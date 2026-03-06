@@ -2,26 +2,24 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Droplets, Shield, BarChart3, BrainCircuit, CloudRain, MapPin, ArrowRight, Database, Globe } from 'lucide-react';
+import {
+    Droplets, Shield, BarChart3, BrainCircuit, CloudRain, MapPin,
+    ArrowRight, Database, Globe, Waves, RadioTower
+} from 'lucide-react';
 
 const fadeUp = {
     hidden: { opacity: 0, y: 24 },
     visible: (i: number) => ({ opacity: 1, y: 0, transition: { delay: i * 0.1, duration: 0.5 } }),
 };
 
-const tech = [
-    { name: 'Next.js 16', cat: 'Frontend', color: 'bg-slate-700' },
-    { name: 'React 19', cat: 'Frontend', color: 'bg-cyan-500/20' },
-    { name: 'TypeScript', cat: 'Language', color: 'bg-blue-500/20' },
-    { name: 'Tailwind CSS v4', cat: 'Styling', color: 'bg-teal-500/20' },
-    { name: 'Framer Motion', cat: 'Animation', color: 'bg-violet-500/20' },
-    { name: 'Recharts', cat: 'Visualization', color: 'bg-green-500/20' },
-    { name: 'Leaflet + React Leaflet', cat: 'Maps', color: 'bg-orange-500/20' },
-    { name: 'Express.js + TypeScript', cat: 'Backend', color: 'bg-red-500/20' },
-    { name: 'MongoDB Atlas', cat: 'Database', color: 'bg-emerald-500/20' },
-    { name: 'India WRIS · CGWB', cat: 'Data Source', color: 'bg-cyan-500/20' },
-    { name: 'Open-Meteo', cat: 'Rainfall API', color: 'bg-blue-500/20' },
-    { name: 'JWT Auth', cat: 'Security', color: 'bg-yellow-500/20' },
+const improvements = [
+    { icon: Droplets, title: 'Rainwater Harvesting', desc: 'Capturing and storing rainwater from rooftops and surfaces to recharge underground aquifers.' },
+    { icon: Waves, title: 'Recharge Wells', desc: 'Specialized wells designed to direct surface water directly into deep groundwater layers.' },
+    { icon: Shield, title: 'Check Dams', desc: 'Small barriers built across streams to slow down water flow and increase soil infiltration.' },
+    { icon: Globe, title: 'Tree Plantation', desc: 'Reforestation helps soil retain moisture and facilitates natural groundwater recharge.' },
+    { icon: BarChart3, title: 'Water Conservation', desc: 'Reducing overall demand through efficient usage and recycling of greywater.' },
+    { icon: BrainCircuit, title: 'Smart Irrigation', desc: 'Using AI and sensors to deliver precise amounts of water to crops, minimizing waste.' },
+    { icon: RadioTower, title: 'DWLR Monitoring', desc: 'Continuous data collection from stations to detect depletion trends early.' },
 ];
 
 const goals = [
@@ -69,35 +67,40 @@ export default function AboutPage() {
                     </p>
                 </motion.div>
 
-                {/* Purpose */}
+                {/* About Monitoring */}
                 <motion.div className="bg-gradient-to-br from-cyan-500/10 to-blue-500/5 border border-cyan-500/15 rounded-3xl p-8 mb-12"
                     initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-                    <h2 className="text-2xl font-bold text-white mb-4">Our Purpose</h2>
-                    <p className="text-slate-300 leading-relaxed mb-4">
-                        AquaWatch India was created to democratize access to groundwater monitoring data from the
-                        <span className="text-cyan-400"> Central Ground Water Board (CGWB)</span> and
-                        <span className="text-cyan-400"> India WRIS</span> portal. India's groundwater crisis affects
-                        over 600 million people — yet most data remains hidden in PDFs and government portals.
-                    </p>
-                    <p className="text-slate-300 leading-relaxed">
-                        By combining real-time DWLR (Digital Water Level Recorder) station data with
-                        ML-powered predictions and rainfall analysis, AquaWatch gives researchers,
-                        water managers, and policymakers actionable insights to drive better decisions.
-                    </p>
+                    <h2 className="text-2xl font-bold text-white mb-4">Why Groundwater Monitoring Matters</h2>
+                    <div className="space-y-4 text-slate-300 leading-relaxed">
+                        <p>
+                            Groundwater is India&apos;s most critical hidden resource, serving over <span className="text-cyan-400">85% of rural drinking water needs</span> and nearly 60% of irrigated agriculture. Monitoring this resource is essential for national water security.
+                        </p>
+                        <p>
+                            Dedicated DWLR (Digital Water Level Recorder) stations collect continuous data because:
+                        </p>
+                        <ul className="list-disc pl-5 space-y-2">
+                            <li><span className="text-white font-medium">Early Detection:</span> Identifying rapid depletion allows for immediate policy intervention.</li>
+                            <li><span className="text-white font-medium">Salinity Mapping:</span> Monitoring prevents the intrusion of saline water into freshwater aquifers.</li>
+                            <li><span className="text-white font-medium">Recharge Planning:</span> Data helps pinpoint the best locations for artificial recharge structures.</li>
+                        </ul>
+                    </div>
                 </motion.div>
 
-                {/* Goals */}
+                {/* Improvement Methods */}
                 <div className="mb-14">
-                    <h2 className="text-2xl font-bold text-white text-center mb-8">What We Do</h2>
+                    <h2 className="text-2xl font-bold text-white text-center mb-10">Groundwater Improvement Methods</h2>
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-                        {goals.map((g, i) => (
+                        {improvements.map((g, i) => (
                             <motion.div key={g.title}
-                                className="bg-slate-900 border border-white/5 rounded-2xl p-5 hover:border-white/10 transition-all"
+                                className="relative overflow-hidden bg-slate-900/50 backdrop-blur-sm border border-white/5 rounded-2xl p-6 hover:border-cyan-500/30 transition-all group"
                                 custom={i} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}
                             >
-                                <g.icon className="w-6 h-6 text-cyan-400 mb-3" />
-                                <h3 className="text-white font-semibold mb-2">{g.title}</h3>
-                                <p className="text-slate-400 text-sm leading-relaxed">{g.desc}</p>
+                                <div className="absolute -top-3 -right-3 w-16 h-16 bg-cyan-500 rounded-full blur-2xl opacity-10 group-hover:opacity-25 transition-opacity" />
+                                <div className="relative w-12 h-12 rounded-xl bg-cyan-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                    <g.icon className="w-6 h-6 text-cyan-400" />
+                                </div>
+                                <h3 className="relative text-white font-semibold mb-2">{g.title}</h3>
+                                <p className="relative text-slate-400 text-sm leading-relaxed">{g.desc}</p>
                             </motion.div>
                         ))}
                     </div>
@@ -125,19 +128,7 @@ export default function AboutPage() {
                     </div>
                 </motion.div>
 
-                {/* Tech Stack */}
-                <motion.div className="mb-12"
-                    initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-                    <h2 className="text-2xl font-bold text-white text-center mb-6">Technology Stack</h2>
-                    <div className="flex flex-wrap gap-2 justify-center">
-                        {tech.map(t => (
-                            <span key={t.name} className={`px-3 py-1.5 ${t.color} border border-white/10 rounded-full text-sm text-white font-medium`}>
-                                {t.name}
-                                <span className="text-slate-500 text-xs ml-1">· {t.cat}</span>
-                            </span>
-                        ))}
-                    </div>
-                </motion.div>
+                {/* CTA */}
 
                 {/* CTA */}
                 <motion.div className="text-center"

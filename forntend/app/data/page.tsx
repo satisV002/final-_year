@@ -8,34 +8,21 @@ import {
     TrendingUp, TrendingDown, Minus, ArrowUpDown
 } from 'lucide-react';
 
-const INDIA_STATES = [
-    'Telangana', 'Andhra Pradesh', 'Karnataka', 'Maharashtra', 'Tamil Nadu',
-    'Odisha', 'Rajasthan', 'Gujarat', 'Madhya Pradesh', 'Uttar Pradesh',
-    'Bihar', 'West Bengal', 'Punjab', 'Haryana', 'Kerala', 'Assam',
-];
+import { INDIA_STATES } from '@/lib/constants';
 
-interface GWRecord {
-    _id: string;
-    location: { state: string; district?: string; block?: string; village?: string; stationId?: string; pinCode?: string; };
-    date: string;
-    waterLevelMbgl: number;
-    trend?: string;
-    source: string;
-}
+import { StationRecord } from '@/types/station';
 
 interface Pagination { page: number; limit: number; totalPages: number; totalRecords: number; }
 
 const COLUMNS = [
-    { key: 'location.stationId', label: 'Station ID' },
-    { key: 'location.state', label: 'State' },
-    { key: 'location.district', label: 'District' },
-    { key: 'location.block', label: 'Block' },
-    { key: 'location.village', label: 'Village' },
-    { key: 'location.pinCode', label: 'PIN Code' },
+    { key: 'stationId', label: 'Station ID' },
+    { key: 'stateName', label: 'State' },
+    { key: 'districtName', label: 'District' },
+    { key: 'villageName', label: 'Village' },
     { key: 'date', label: 'Date' },
     { key: 'waterLevelMbgl', label: 'Water Level (m)' },
     { key: 'trend', label: 'Trend' },
-    { key: 'source', label: 'Source' },
+    { key: 'agencyName', label: 'Source' },
 ];
 
 function TrendBadge({ trend }: { trend?: string }) {
@@ -54,13 +41,13 @@ function TrendBadge({ trend }: { trend?: string }) {
     );
 }
 
-function downloadCSV(data: GWRecord[]) {
-    const header = ['Station ID', 'State', 'District', 'Block', 'Village', 'PIN Code', 'Date', 'Water Level (m)', 'Trend', 'Source'];
+function downloadCSV(data: StationRecord[]) {
+    const header = ['Station ID', 'State', 'District', 'Village', 'Date', 'Water Level (m)', 'Trend', 'Source'];
     const rows = data.map(r => [
-        r.location.stationId, r.location.state, r.location.district, r.location.block,
-        r.location.village, r.location.pinCode,
+        r.stationId, r.stateName, r.districtName,
+        r.villageName,
         new Date(r.date).toLocaleDateString('en-IN'),
-        r.waterLevelMbgl, r.trend, r.source
+        r.waterLevelMbgl, r.trend, r.agencyName
     ]);
     const csv = [header, ...rows].map(r => r.map(v => `"${v ?? ''}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -72,7 +59,7 @@ function downloadCSV(data: GWRecord[]) {
 
 export default function DataPage() {
     const [filters, setFilters] = useState<Filters>({ state: 'Telangana' });
-    const [records, setRecords] = useState<GWRecord[]>([]);
+    const [records, setRecords] = useState<StationRecord[]>([]);
     const [pagination, setPagination] = useState<Pagination | null>(null);
     const [page, setPage] = useState(1);
     const [sort, setSort] = useState('date:-1');
@@ -90,7 +77,20 @@ export default function DataPage() {
             if (f.fromDate) params.fromDate = f.fromDate;
             if (f.toDate) params.toDate = f.toDate;
             const res = await api.get('/groundwater', { params });
-            setRecords(res.data.data ?? []);
+            const rawData = res.data.data ?? [];
+
+            const data: StationRecord[] = rawData.map((s: any) => ({
+                ...s,
+                stationId: s.location?.stationId || '',
+                stateName: s.location?.state || '',
+                districtName: s.location?.district || '',
+                villageName: s.location?.village || '',
+                lat: s.location?.coordinates?.coordinates?.[1] || 0,
+                lng: s.location?.coordinates?.coordinates?.[0] || 0,
+                agencyName: s.source || 'Unknown'
+            }));
+
+            setRecords(data);
             setPagination(res.data.pagination ?? null);
         } catch (err) {
             setError(getApiErrorMessage(err));
@@ -159,23 +159,24 @@ export default function DataPage() {
                                     No records found — try adjusting filters
                                 </td></tr>
                             ) : records.map(r => (
-                                <tr key={r._id} className="hover:bg-white/[0.02] transition-colors">
-                                    <td className="px-4 py-3 text-xs font-mono text-cyan-400 whitespace-nowrap">{r.location.stationId ?? '—'}</td>
-                                    <td className="px-4 py-3 text-slate-300 whitespace-nowrap">{r.location.state}</td>
-                                    <td className="px-4 py-3 text-slate-400 whitespace-nowrap">{r.location.district ?? '—'}</td>
-                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.location.block ?? '—'}</td>
-                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.location.village ?? '—'}</td>
-                                    <td className="px-4 py-3 text-slate-400 font-mono text-xs">{r.location.pinCode ?? '—'}</td>
-                                    <td className="px-4 py-3 text-slate-400 whitespace-nowrap">{new Date(r.date).toLocaleDateString('en-IN')}</td>
+                                <tr key={r._id} className="group relative hover:bg-white/[0.02] transition-colors">
+                                    <td className="px-4 py-3 text-xs font-mono text-cyan-400 whitespace-nowrap tabular-nums relative">
+                                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-3/4 bg-cyan-500 rounded-r-full opacity-0 group-hover:opacity-100 transition-opacity shadow-[0_0_8px_rgba(6,182,212,0.6)]" />
+                                        {r.stationId}
+                                    </td>
+                                    <td className="px-4 py-3 text-slate-300 whitespace-nowrap">{r.stateName}</td>
+                                    <td className="px-4 py-3 text-slate-400 whitespace-nowrap">{r.districtName}</td>
+                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.villageName || '—'}</td>
+                                    <td className="px-4 py-3 text-slate-400 whitespace-nowrap tabular-nums">{new Date(r.date).toLocaleDateString('en-IN')}</td>
                                     <td className="px-4 py-3">
-                                        <span className={`font-mono font-bold ${r.waterLevelMbgl > 10 ? 'text-red-400'
-                                                : r.waterLevelMbgl > 5 ? 'text-yellow-400'
-                                                    : 'text-green-400'
+                                        <span className={`font-mono font-bold tabular-nums ${r.waterLevelMbgl > 10 ? 'text-red-400'
+                                            : r.waterLevelMbgl > 5 ? 'text-yellow-400'
+                                                : 'text-green-400'
                                             }`}>{r.waterLevelMbgl?.toFixed(2) ?? '—'}</span>
                                     </td>
                                     <td className="px-4 py-3"><TrendBadge trend={r.trend} /></td>
                                     <td className="px-4 py-3">
-                                        <span className="px-2 py-0.5 bg-slate-800 rounded-md text-xs text-slate-400">{r.source}</span>
+                                        <span className="px-2 py-0.5 bg-slate-800 rounded-md text-xs text-slate-400">{r.agencyName}</span>
                                     </td>
                                 </tr>
                             ))}
@@ -189,23 +190,24 @@ export default function DataPage() {
                         <p className="text-xs text-slate-500">
                             Page {pagination.page} of {pagination.totalPages} ({pagination.totalRecords.toLocaleString()} records)
                         </p>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
-                                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-white/10 text-slate-400 hover:text-white disabled:opacity-40 transition-all">
+                                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-white/10 text-slate-400 hover:text-white disabled:opacity-40 transition-all">
                                 <ChevronLeft className="w-4 h-4" />
                             </button>
                             {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
                                 const pg = Math.max(1, Math.min(page - 2, pagination.totalPages - 4)) + i;
+                                if (pg < 1 || pg > pagination.totalPages) return null;
                                 return (
                                     <button key={pg} onClick={() => setPage(pg)}
-                                        className={`w-8 h-8 rounded-lg text-xs font-medium transition-all ${pg === page
-                                            ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/25'
+                                        className={`w-9 h-9 rounded-xl text-xs font-bold transition-all ${pg === page
+                                            ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25 ring-1 ring-white/20'
                                             : 'bg-slate-800 hover:bg-slate-700 border border-white/10 text-slate-400 hover:text-white'
                                             }`}>{pg}</button>
                                 );
                             })}
                             <button onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))} disabled={page >= pagination.totalPages}
-                                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-white/10 text-slate-400 hover:text-white disabled:opacity-40 transition-all">
+                                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-white/10 text-slate-400 hover:text-white disabled:opacity-40 transition-all">
                                 <ChevronRight className="w-4 h-4" />
                             </button>
                         </div>

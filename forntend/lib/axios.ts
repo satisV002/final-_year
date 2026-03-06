@@ -1,14 +1,20 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import Cookies from 'js-cookie';
 
+// NOTE: backend runs on port 7000 (configured via .env) in development.
+// You can override this with NEXT_PUBLIC_API_URL (e.g. for Docker or alternate host).
 const api = axios.create({
     baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7000/api/v1',
     timeout: 15000,
     headers: { 'Content-Type': 'application/json' },
 });
 
-// ── Request Interceptor: inject token
+// ── Request Interceptor: inject token and log (dev only)
 api.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
+        if (process.env.NODE_ENV === 'development') {
+            console.debug('axios request', { url: config.url, baseURL: config.baseURL });
+        }
         if (typeof window !== 'undefined') {
             const token = localStorage.getItem('gw_token');
             if (token) config.headers['Authorization'] = `Bearer ${token}`;
@@ -30,6 +36,7 @@ api.interceptors.response.use(
             // Token expired or invalid → clear and redirect to login
             localStorage.removeItem('gw_token');
             localStorage.removeItem('gw_user');
+            Cookies.remove('gw_token');
             window.location.href = '/login';
         } else if (status === 403) {
             console.error('Access forbidden');
@@ -38,7 +45,11 @@ api.interceptors.response.use(
         } else if (status === 500) {
             console.error('Server error — please try again later');
         } else if (!error.response) {
-            console.error('Network error — server may be down');
+            // config may be undefined if request was never built
+            console.error('Network error — server may be down', {
+                url: error.config?.url ?? '<none>',
+                baseURL: error.config?.baseURL ?? '<none>',
+            });
         }
 
         return Promise.reject(error);

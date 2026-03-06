@@ -9,6 +9,7 @@ import {
 } from 'recharts';
 import api from '@/lib/axios';
 import FilterBar, { Filters } from '@/components/filters/FilterBar';
+import { StationRecord } from '@/types/station';
 
 const INDIA_STATES = [
     'Telangana', 'Andhra Pradesh', 'Karnataka', 'Maharashtra', 'Tamil Nadu',
@@ -103,7 +104,19 @@ export default function ForecastPage() {
             if (f.state) params.state = f.state;
             if (f.district) params.district = f.district;
             const res = await api.get('/groundwater', { params });
-            const data = res.data.data ?? [];
+            const rawData = res.data.data ?? [];
+
+            const data: StationRecord[] = rawData.map((s: any) => ({
+                ...s,
+                stationId: s.location?.stationId || '',
+                stateName: s.location?.state || '',
+                districtName: s.location?.district || '',
+                villageName: s.location?.village || '',
+                lat: s.location?.coordinates?.coordinates?.[1] || 0,
+                lng: s.location?.coordinates?.coordinates?.[0] || 0,
+                agencyName: s.source || 'Unknown'
+            }));
+
             const pts = buildForecast(data);
             setChartData(pts);
             const lastForecast = pts.filter(p => p.forecast).pop();
@@ -133,7 +146,7 @@ export default function ForecastPage() {
                 <button
                     onClick={() => runForecast(filters)}
                     disabled={loading}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 transition shadow-lg shadow-violet-500/25"
+                    className="relative flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-semibold rounded-xl hover:opacity-90 disabled:opacity-50 transition shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 hover:scale-105 active:scale-95 duration-200"
                 >
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
                     Run Prediction
@@ -151,18 +164,19 @@ export default function ForecastPage() {
             {/* Prediction Cards */}
             {predicted2026 && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-gradient-to-br from-violet-500/10 to-purple-500/5 border border-violet-500/20 rounded-2xl p-5">
-                        <p className="text-xs font-medium text-violet-400 uppercase tracking-wider mb-1">2026 Predicted Level</p>
-                        <p className="text-3xl font-bold text-white">{predicted2026.toFixed(2)} m</p>
+                    <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-violet-950/40 border border-violet-500/20 rounded-2xl p-5">
+                        <div className="absolute -top-4 -right-4 w-24 h-24 bg-violet-500 rounded-full blur-2xl opacity-20" />
+                        <p className="text-xs font-bold text-violet-400 uppercase tracking-wider mb-1">2026 Predicted Level</p>
+                        <p className="text-3xl font-bold text-white tabular-nums">{predicted2026.toFixed(2)} m</p>
                         <p className="text-xs text-slate-500 mt-1">LSTM Forecast — MBGL</p>
                     </div>
-                    <div className="bg-slate-900 border border-white/5 rounded-2xl p-5">
-                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Model</p>
+                    <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-slate-800/60 border border-white/5 rounded-2xl p-5">
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Model</p>
                         <p className="text-xl font-bold text-white">Linear Regression</p>
                         <p className="text-xs text-slate-500 mt-1">Based on historical trend data</p>
                     </div>
-                    <div className="bg-slate-900 border border-white/5 rounded-2xl p-5">
-                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Trend</p>
+                    <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-slate-800/60 border border-white/5 rounded-2xl p-5">
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Trend</p>
                         <div className="flex items-center gap-2 mt-1">
                             {predicted2026 > 10
                                 ? <><TrendingDown className="w-6 h-6 text-red-400" /><span className="text-red-400 font-bold text-xl">Declining</span></>
@@ -208,8 +222,8 @@ export default function ForecastPage() {
                             <Tooltip content={<CustomTooltip />} />
                             <Legend wrapperStyle={{ fontSize: '12px', color: '#94a3b8' }} />
                             <ReferenceLine x="2025-01-01" stroke="rgba(255,255,255,0.1)" strokeDasharray="6 3" label={{ value: 'Today →', fill: '#64748b', fontSize: 10 }} />
-                            <Line type="monotone" dataKey="actual" stroke="#06b6d4" strokeWidth={2} dot={false} name="Actual (MBGL)" connectNulls />
-                            <Line type="monotone" dataKey="forecast" stroke="#a855f7" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Forecast (MBGL)" connectNulls />
+                            <Line type="monotone" dataKey="actual" stroke="#06b6d4" strokeWidth={2} dot={false} name="Actual (MBGL)" connectNulls animationDuration={1500} />
+                            <Line type="monotone" dataKey="forecast" stroke="#a855f7" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Forecast (MBGL)" connectNulls animationDuration={1500} />
                         </LineChart>
                     </ResponsiveContainer>
                 ) : (

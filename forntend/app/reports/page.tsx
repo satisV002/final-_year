@@ -11,6 +11,7 @@ import {
     CartesianGrid, PieChart, Pie, Cell, Legend
 } from 'recharts';
 import FilterBar, { Filters } from '@/components/filters/FilterBar';
+import { StationRecord } from '@/types/station';
 
 const INDIA_STATES = [
     'Telangana', 'Andhra Pradesh', 'Karnataka', 'Maharashtra', 'Tamil Nadu',
@@ -26,10 +27,10 @@ interface ReportData {
     summary: { total: number; avg: number; critical: number; rising: number; falling: number; stable: number };
 }
 
-function processData(data: any[]): ReportData {
+function processData(data: StationRecord[]): ReportData {
     const byDistrict: any = {};
     data.forEach(r => {
-        const d = r.location?.district || 'Unknown';
+        const d = r.districtName;
         if (!byDistrict[d]) byDistrict[d] = { sum: 0, count: 0 };
         if (r.waterLevelMbgl != null) { byDistrict[d].sum += r.waterLevelMbgl; byDistrict[d].count++; }
     });
@@ -92,7 +93,20 @@ export default function ReportsPage() {
             if (f.fromDate) params.fromDate = f.fromDate;
             if (f.toDate) params.toDate = f.toDate;
             const res = await api.get('/groundwater', { params });
-            setReport(processData(res.data.data ?? []));
+            const rawData = res.data.data ?? [];
+
+            const data: StationRecord[] = rawData.map((s: any) => ({
+                ...s,
+                stationId: s.location?.stationId || '',
+                stateName: s.location?.state || '',
+                districtName: s.location?.district || '',
+                villageName: s.location?.village || '',
+                lat: s.location?.coordinates?.coordinates?.[1] || 0,
+                lng: s.location?.coordinates?.coordinates?.[0] || 0,
+                agencyName: s.source || 'Unknown'
+            }));
+
+            setReport(processData(data));
         } catch (err) {
             setError(getApiErrorMessage(err));
         } finally {
@@ -141,16 +155,17 @@ export default function ReportsPage() {
                     {/* KPI Cards */}
                     <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
                         {[
-                            { label: 'Total Records', value: summary.total.toLocaleString(), color: 'text-cyan-400' },
-                            { label: 'Avg Depth (m)', value: summary.avg.toFixed(2), color: 'text-blue-400' },
-                            { label: 'Critical', value: summary.critical, color: 'text-red-400' },
-                            { label: 'Rising', value: summary.rising, icon: TrendingUp, color: 'text-green-400' },
-                            { label: 'Falling', value: summary.falling, icon: TrendingDown, color: 'text-orange-400' },
-                            { label: 'Stable', value: summary.stable, icon: Minus, color: 'text-yellow-400' },
+                            { label: 'Total Records', value: summary.total.toLocaleString(), color: 'text-cyan-400', gradient: 'from-slate-900 to-cyan-950/40', glow: 'bg-cyan-500' },
+                            { label: 'Avg Depth (m)', value: summary.avg.toFixed(2), color: 'text-blue-400', gradient: 'from-slate-900 to-blue-950/40', glow: 'bg-blue-500' },
+                            { label: 'Critical', value: summary.critical, color: 'text-red-400', gradient: 'from-slate-900 to-red-950/30', glow: 'bg-red-500' },
+                            { label: 'Rising', value: summary.rising, icon: TrendingUp, color: 'text-green-400', gradient: 'from-slate-900 to-green-950/30', glow: 'bg-green-500' },
+                            { label: 'Falling', value: summary.falling, icon: TrendingDown, color: 'text-orange-400', gradient: 'from-slate-900 to-orange-950/30', glow: 'bg-orange-500' },
+                            { label: 'Stable', value: summary.stable, icon: Minus, color: 'text-yellow-400', gradient: 'from-slate-900 to-yellow-950/20', glow: 'bg-yellow-500' },
                         ].map(k => (
-                            <div key={k.label} className="bg-slate-900 border border-white/5 rounded-2xl p-4 hover:border-white/10 transition-all text-center">
-                                <p className={`text-2xl font-bold ${k.color}`}>{k.value}</p>
-                                <p className="text-xs text-slate-500 mt-1">{k.label}</p>
+                            <div key={k.label} className={`relative overflow-hidden border border-white/5 rounded-2xl p-4 hover:border-white/15 hover:scale-[1.02] transition-all duration-300 group cursor-default text-center bg-gradient-to-br ${k.gradient}`}>
+                                <div className={`absolute -top-4 -right-4 w-16 h-16 rounded-full blur-xl opacity-15 group-hover:opacity-30 transition-opacity ${k.glow}`} />
+                                <p className={`relative text-2xl font-bold tabular-nums ${k.color}`}>{k.value}</p>
+                                <p className="relative text-xs text-slate-500 mt-1">{k.label}</p>
                             </div>
                         ))}
                     </div>
@@ -169,7 +184,7 @@ export default function ReportsPage() {
                                     <XAxis type="number" tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={v => `${v}m`} />
                                     <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} width={90} />
                                     <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-                                    <Bar dataKey="avg" fill="#06b6d4" radius={[0, 4, 4, 0]} maxBarSize={20} />
+                                    <Bar dataKey="avg" fill="#06b6d4" radius={[0, 4, 4, 0]} maxBarSize={20} animationDuration={1500} />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
@@ -184,6 +199,7 @@ export default function ReportsPage() {
                                         data={statusBreakdown} cx="50%" cy="50%"
                                         innerRadius={60} outerRadius={90}
                                         paddingAngle={3} dataKey="value"
+                                        animationDuration={1500}
                                     >
                                         {statusBreakdown?.map((_, i) => (
                                             <Cell key={i} fill={PIE_COLORS[i]} />

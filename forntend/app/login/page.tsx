@@ -42,7 +42,7 @@ export default function LoginPage() {
             await login(email, password);
             setIsSuccess(true);
             // Small delay to show success animation before redirect
-            setTimeout(() => router.push('/overview'), 1200);
+            setTimeout(() => router.push('/home'), 1200);
         } catch { /* error shown via context */ }
     };
 
@@ -57,12 +57,12 @@ export default function LoginPage() {
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-teal-500/5 rounded-full blur-3xl" />
             </div>
 
-            {/* ── LEFT: Form ── */}
+            {/* ── RIGHT: Form (Shifted slightly right) ── */}
             <motion.div
-                className="relative z-10 flex flex-col justify-center w-full max-w-md px-8 py-12 lg:px-12"
-                initial={{ opacity: 0, x: -30 }}
+                className="relative z-10 flex flex-col justify-center w-full max-w-md px-8 py-12 lg:px-12 lg:ml-auto bg-slate-900/40 backdrop-blur-sm border-l border-white/5"
+                initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
             >
                 {/* Logo */}
                 <div className="mb-8">
@@ -152,9 +152,12 @@ export default function LoginPage() {
 
                 <p className="mt-6 text-center text-sm text-slate-400">
                     Don&apos;t have an account?{' '}
-                    <Link href="/register" className="text-cyan-400 hover:text-cyan-300 font-medium transition-colors">
+                    <button
+                        onClick={() => router.push('/register')}
+                        className="text-cyan-400 hover:text-cyan-300 font-medium transition-colors cursor-pointer hover:underline"
+                    >
                         Create one
-                    </Link>
+                    </button>
                 </p>
 
                 {/* Footer notice */}
@@ -163,12 +166,12 @@ export default function LoginPage() {
                 </p>
             </motion.div>
 
-            {/* ── RIGHT: Character ── */}
+            {/* ── LEFT: Character (Visual Panel) ── */}
             <motion.div
-                className="hidden lg:flex flex-1 items-center justify-center relative"
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
+                className="hidden lg:flex flex-1 items-center justify-center relative order-first"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.8 }}
             >
                 {/* Panel BG */}
                 <div className="absolute inset-0 bg-gradient-to-br from-slate-900/80 via-cyan-950/20 to-blue-950/40 border-l border-white/5" />
@@ -208,7 +211,7 @@ export default function LoginPage() {
                         hasError={hasError}
                         isSuccess={isSuccess}
                         isLoading={isLoading}
-                        mood="idle"
+                        mood="welcome"
                     />
                 </div>
 

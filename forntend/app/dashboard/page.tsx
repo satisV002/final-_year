@@ -12,23 +12,9 @@ import {
 } from 'recharts';
 import FilterBar, { Filters } from '@/components/filters/FilterBar';
 
-const INDIA_STATES = [
-    'Telangana', 'Andhra Pradesh', 'Karnataka', 'Maharashtra', 'Tamil Nadu',
-    'Odisha', 'Rajasthan', 'Gujarat', 'Madhya Pradesh', 'Uttar Pradesh',
-    'Bihar', 'West Bengal', 'Punjab', 'Haryana', 'Kerala', 'Assam',
-    'Jharkhand', 'Chhattisgarh', 'Uttarakhand', 'Himachal Pradesh',
-    'Goa', 'Tripura', 'Meghalaya', 'Manipur', 'Nagaland',
-    'Arunachal Pradesh', 'Mizoram', 'Sikkim'
-];
+import { INDIA_STATES } from '@/lib/constants';
 
-interface GWRecord {
-    _id: string;
-    location: { state: string; district?: string; village?: string; stationId?: string; pinCode?: string; };
-    date: string;
-    waterLevelMbgl: number;
-    trend?: string;
-    source: string;
-}
+import { Station, StationRecord } from '@/types/station';
 
 interface SummaryStats {
     total: number;
@@ -39,21 +25,21 @@ interface SummaryStats {
     stable: number;
 }
 
-function StatCard({ title, value, subtitle, icon: Icon, color }: {
+function StatCard({ title, value, subtitle, icon: Icon, gradient, glow, iconColor }: {
     title: string; value: string | number; subtitle?: string;
-    icon: React.ElementType; color: string;
+    icon: React.ElementType; gradient: string; glow: string; iconColor: string;
 }) {
     return (
-        <div className={`relative overflow-hidden rounded-2xl bg-slate-900 border border-white/5 p-5 hover:border-white/10 transition-all group`}>
-            <div className={`absolute top-0 right-0 w-32 h-32 ${color} opacity-5 rounded-full blur-2xl group-hover:opacity-10 transition-opacity`} />
-            <div className="flex items-start justify-between">
+        <div className={`relative overflow-hidden rounded-2xl border border-white/5 p-5 hover:border-white/15 hover:scale-[1.02] transition-all duration-300 group cursor-default bg-gradient-to-br ${gradient}`}>
+            <div className={`absolute -top-4 -right-4 w-24 h-24 rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition-opacity ${glow}`} />
+            <div className="relative flex items-start justify-between">
                 <div>
-                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{title}</p>
-                    <p className="text-3xl font-bold text-white mt-1">{value}</p>
-                    {subtitle && <p className="text-xs text-slate-500 mt-1">{subtitle}</p>}
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{title}</p>
+                    <p className="text-3xl font-bold text-white mt-1 tabular-nums">{value}</p>
+                    {subtitle && <p className="text-[11px] text-slate-500 mt-1">{subtitle}</p>}
                 </div>
-                <div className={`p-2.5 rounded-xl ${color} bg-opacity-10`}>
-                    <Icon className={`w-5 h-5 ${color.replace('bg-', 'text-')}`} />
+                <div className="p-2.5 rounded-xl bg-white/5 border border-white/10">
+                    <Icon className={`w-5 h-5 ${iconColor}`} />
                 </div>
             </div>
         </div>
@@ -78,7 +64,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export default function DashboardPage() {
     const [filters, setFilters] = useState<Filters>({ state: 'Telangana' });
-    const [records, setRecords] = useState<GWRecord[]>([]);
+    const [records, setRecords] = useState<StationRecord[]>([]);
     const [stats, setStats] = useState<SummaryStats | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -98,7 +84,19 @@ export default function DashboardPage() {
             params.sort = 'date:1';
 
             const res = await api.get('/groundwater', { params });
-            const data: GWRecord[] = res.data.data ?? [];
+            const rawData = res.data.data ?? [];
+
+            const data: StationRecord[] = rawData.map((s: any) => ({
+                ...s,
+                stationId: s.location?.stationId || '',
+                stateName: s.location?.state || '',
+                districtName: s.location?.district || '',
+                villageName: s.location?.village || '',
+                lat: s.location?.coordinates?.coordinates?.[1] || 0,
+                lng: s.location?.coordinates?.coordinates?.[0] || 0,
+                agencyName: s.source || 'Unknown'
+            }));
+
             setRecords(data);
 
             // Compute stats
@@ -172,12 +170,12 @@ export default function DashboardPage() {
             {/* Stats Cards */}
             {stats && (
                 <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-                    <StatCard title="Stations" value={stats.total} subtitle="records found" icon={MapPin} color="bg-cyan-500" />
-                    <StatCard title="Avg Depth" value={`${stats.avgDepth.toFixed(1)} m`} subtitle="water level MBGL" icon={Waves} color="bg-blue-500" />
-                    <StatCard title="Critical" value={stats.critical} subtitle="> 10 m MBGL" icon={AlertTriangle} color="bg-red-500" />
-                    <StatCard title="Rising" value={stats.rising} subtitle="trend" icon={TrendingUp} color="bg-green-500" />
-                    <StatCard title="Falling" value={stats.falling} subtitle="trend" icon={TrendingDown} color="bg-orange-500" />
-                    <StatCard title="Stable" value={stats.stable} subtitle="trend" icon={Activity} color="bg-purple-500" />
+                    <StatCard title="Stations" value={stats.total} subtitle="records found" icon={MapPin} gradient="from-slate-900 to-cyan-950/40" glow="bg-cyan-500" iconColor="text-cyan-400" />
+                    <StatCard title="Avg Depth" value={`${stats.avgDepth.toFixed(1)} m`} subtitle="water level MBGL" icon={Waves} gradient="from-slate-900 to-blue-950/40" glow="bg-blue-500" iconColor="text-blue-400" />
+                    <StatCard title="Critical" value={stats.critical} subtitle="> 10 m MBGL" icon={AlertTriangle} gradient="from-slate-900 to-red-950/30" glow="bg-red-500" iconColor="text-red-400" />
+                    <StatCard title="Rising" value={stats.rising} subtitle="trend" icon={TrendingUp} gradient="from-slate-900 to-green-950/30" glow="bg-green-500" iconColor="text-green-400" />
+                    <StatCard title="Falling" value={stats.falling} subtitle="trend" icon={TrendingDown} gradient="from-slate-900 to-orange-950/30" glow="bg-orange-500" iconColor="text-orange-400" />
+                    <StatCard title="Stable" value={stats.stable} subtitle="trend" icon={Activity} gradient="from-slate-900 to-purple-950/30" glow="bg-purple-500" iconColor="text-purple-400" />
                 </div>
             )}
 
@@ -209,9 +207,9 @@ export default function DashboardPage() {
                             <YAxis tick={{ fontSize: 11, fill: '#64748b' }} tickFormatter={v => `${v}m`} reversed />
                             <Tooltip content={<CustomTooltip />} />
                             <Legend wrapperStyle={{ fontSize: '12px', color: '#94a3b8' }} />
-                            <Area type="monotone" dataKey="maxLevel" stroke="#ef4444" fill="none" strokeWidth={1} strokeDasharray="4 4" dot={false} name="Max Level" />
-                            <Area type="monotone" dataKey="avgLevel" stroke="#06b6d4" fill="url(#avgGrad)" strokeWidth={2} dot={false} name="Avg Level" />
-                            <Area type="monotone" dataKey="minLevel" stroke="#22c55e" fill="none" strokeWidth={1} strokeDasharray="4 4" dot={false} name="Min Level" />
+                            <Area type="monotone" dataKey="maxLevel" stroke="#ef4444" fill="none" strokeWidth={1} strokeDasharray="4 4" dot={false} name="Max Level" animationDuration={1500} />
+                            <Area type="monotone" dataKey="avgLevel" stroke="#06b6d4" fill="url(#avgGrad)" strokeWidth={2} dot={false} name="Avg Level" animationDuration={1500} />
+                            <Area type="monotone" dataKey="minLevel" stroke="#22c55e" fill="none" strokeWidth={1} strokeDasharray="4 4" dot={false} name="Min Level" animationDuration={1500} />
                         </AreaChart>
                     </ResponsiveContainer>
                 ) : !loading ? (
@@ -243,22 +241,22 @@ export default function DashboardPage() {
                         <tbody className="divide-y divide-white/5">
                             {records.slice(0, 20).map((r) => (
                                 <tr key={r._id} className="hover:bg-white/2 transition-colors">
-                                    <td className="px-4 py-3 text-xs font-mono text-cyan-400">{r.location.stationId ?? '—'}</td>
-                                    <td className="px-4 py-3 text-slate-300 whitespace-nowrap">{r.location.state}</td>
-                                    <td className="px-4 py-3 text-slate-400 whitespace-nowrap">{r.location.district ?? '—'}</td>
-                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.location.village ?? '—'}</td>
+                                    <td className="px-4 py-3 text-xs font-mono text-cyan-400">{r.stationId}</td>
+                                    <td className="px-4 py-3 text-slate-300 whitespace-nowrap">{r.stateName}</td>
+                                    <td className="px-4 py-3 text-slate-400 whitespace-nowrap">{r.districtName}</td>
+                                    <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.villageName || '—'}</td>
                                     <td className="px-4 py-3 text-slate-400 whitespace-nowrap">{new Date(r.date).toLocaleDateString('en-IN')}</td>
                                     <td className="px-4 py-3">
                                         <span className={`font-mono font-medium ${r.waterLevelMbgl > 10 ? 'text-red-400'
-                                                : r.waterLevelMbgl > 5 ? 'text-orange-400'
-                                                    : 'text-green-400'
+                                            : r.waterLevelMbgl > 5 ? 'text-orange-400'
+                                                : 'text-green-400'
                                             }`}>{r.waterLevelMbgl?.toFixed(2) ?? '—'}</span>
                                     </td>
                                     <td className="px-4 py-3">
                                         {r.trend ? <span className="flex items-center gap-1">{trendIcon(r.trend)}<span className="text-slate-400">{r.trend}</span></span> : <span className="text-slate-600">—</span>}
                                     </td>
                                     <td className="px-4 py-3">
-                                        <span className="px-2 py-0.5 bg-slate-800 rounded-md text-xs text-slate-400">{r.source}</span>
+                                        <span className="px-2 py-0.5 bg-slate-800 rounded-md text-xs text-slate-400">{r.agencyName}</span>
                                     </td>
                                 </tr>
                             ))}

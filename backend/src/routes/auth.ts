@@ -21,7 +21,7 @@ const signupSchema = Joi.object({
   }),
   password: Joi.string()
     .min(8)
-    .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/)
+    .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/)
     .required()
     .messages({
       'string.pattern.base': 'Password must contain uppercase, lowercase, and number',

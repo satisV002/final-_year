@@ -17,7 +17,10 @@ async function seedDatabase() {
 
     // Format data to match model
     // Format data to match model
-    const dataList = (initialData as any).Table ? (initialData as any).Table : (initialData as any[]);
+    // ensure we treat the JSON either as an object with Table or an array
+    const dataList = Array.isArray((initialData as any).Table)
+      ? (initialData as any).Table
+      : (initialData as any);
 
     if (!Array.isArray(dataList)) {
       logger.error('Invalid data format: Expected array or object with Table property');

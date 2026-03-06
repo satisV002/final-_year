@@ -6,12 +6,17 @@ import logger from './utils/logger';
 import { env } from './config/env';
 import mongoose from 'mongoose';
 import { setupDailyFetchCron } from './cron/dailyFetch';
+import { loadStations } from './services/stationLoader.service';
+import { loadRainfall } from './services/rainfallLoader.service';
 
 const app = createApp();          // ✅ FIX
 const server = http.createServer(app);
 
 const startServer = async () => {
   try {
+    await loadStations(); // Preload stations into memory
+    await loadRainfall(); // Preload rainfall into memory
+
     if (!env.isTest) {
       await connectDB();
 
@@ -54,5 +59,12 @@ const shutdown = async (signal: string) => {
 
 process.on('SIGINT', () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on("uncaughtException", (err) => {
+  console.error("UNCAUGHT EXCEPTION:", err);
+});
+
+process.on("unhandledRejection", (err) => {
+  console.error("UNHANDLED REJECTION:", err);
+});
 
 startServer();

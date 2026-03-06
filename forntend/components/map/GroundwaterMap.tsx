@@ -3,18 +3,10 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 
-interface Station {
-    _id: string;
-    location: {
-        state: string; district?: string; village?: string;
-        stationId?: string; pinCode?: string;
-        coordinates?: { type: string; coordinates: [number, number] };
-    };
-    date: string;
-    waterLevelMbgl: number;
-    trend?: string;
-}
+import { Station } from '@/types/station';
 
 interface Props {
     stations: Station[];
@@ -48,21 +40,35 @@ function createMarker(color: string, selected: boolean) {
 export default function GroundwaterMap({ stations, onSelect, selectedId }: Props) {
     const mapRef = useRef<L.Map | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
-    const markersRef = useRef<Map<string, L.Marker>>(new Map());
+    const clusterRef = useRef<any>(null);
 
     // Initialize map once
     useEffect(() => {
-        if (!containerRef.current || mapRef.current) return;
+        if (typeof window === 'undefined' || !containerRef.current || mapRef.current) return;
+
+        // Dynamic import of markercluster plugin (needs window/L global)
+        require('leaflet.markercluster');
+
         mapRef.current = L.map(containerRef.current, {
-            center: [20.5937, 78.9629],
+            center: [22.9734, 78.6569], // Center of India
             zoom: 5,
             zoomControl: true,
         });
+
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '©OpenStreetMap ©CartoDB',
             subdomains: 'abcd',
             maxZoom: 19,
         }).addTo(mapRef.current!);
+
+        // @ts-ignore
+        clusterRef.current = L.markerClusterGroup({
+            showCoverageOnHover: false,
+            spiderfyOnMaxZoom: true,
+            chunkedLoading: true // Performance booster for 24k markers
+        });
+        mapRef.current.addLayer(clusterRef.current);
+
         mapRef.current.invalidateSize();
 
         return () => {
@@ -73,47 +79,79 @@ export default function GroundwaterMap({ stations, onSelect, selectedId }: Props
 
     // Update markers when stations change
     useEffect(() => {
-        if (!mapRef.current) return;
-        const map = mapRef.current;
+        if (!mapRef.current || !clusterRef.current) return;
+        const cluster = clusterRef.current;
 
-        // Remove old markers
-        markersRef.current.forEach(m => m.remove());
-        markersRef.current.clear();
+        // Clear old markers
+        cluster.clearLayers();
 
+        const markers: L.Marker[] = [];
         stations.forEach(station => {
-            const coords = station.location.coordinates?.coordinates;
-            if (!coords || coords.length < 2) return;
-            const [lng, lat] = coords;
+            const { lat, lng, stationId, stationName, waterLevelMbgl } = station;
             if (!lat || !lng) return;
 
-            const selected = station._id === selectedId;
-            const color = getMarkerColor(station.waterLevelMbgl);
+            const selected = station.stationId === selectedId;
+            const color = getMarkerColor(waterLevelMbgl || 0);
             const marker = L.marker([lat, lng], { icon: createMarker(color, selected) });
 
             marker.bindPopup(`
-        <div style="font-family: sans-serif; min-width: 160px;">
-          <p style="font-weight: 600; color: #e2e8f0; margin: 0 0 4px;">${station.location.stationId ?? 'Unknown'}</p>
-          <p style="color: #94a3b8; font-size: 0.75rem; margin: 0 0 2px;">${station.location.district ?? ''}, ${station.location.state}</p>
-          <p style="color: ${color}; font-size: 1rem; font-weight: 700; margin: 6px 0 0;">${station.waterLevelMbgl?.toFixed(2)} m MBGL</p>
-          ${station.trend ? `<p style="color: #64748b; font-size: 0.7rem;">${station.trend}</p>` : ''}
-        </div>
-      `, { className: 'dark-popup' });
+                <div style="font-family: 'Inter', sans-serif; min-width: 180px; padding: 4px;">
+                  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <div style="width: 8px; height: 8px; border-radius: 50%; background: ${color}; box-shadow: 0 0 8px ${color}aa;"></div>
+                    <p style="font-weight: 700; color: #fff; margin: 0; font-size: 13px;">${stationName || stationId}</p>
+                  </div>
+                  <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                    <p style="color: #94a3b8; font-size: 11px; margin: 0 0 4px;">${station.districtName}, ${station.stateName}</p>
+                    <div style="display: flex; justify-content: mb-1; flex-direction: column; gap: 2px;">
+                       <p style="color: #64748b; font-size: 10px; margin: 0;">Level: <span style="color: ${color}; font-weight: 600;">${waterLevelMbgl?.toFixed(2) ?? '—'} m MBGL</span></p>
+                       <p style="color: #64748b; font-size: 10px; margin: 0;">Source: <span style="color: #cbd5e1;">${station.agencyName}</span></p>
+                    </div>
+                  </div>
+                  <p style="color: #06b6d4; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 10px; text-align: center;">Click for Analytics</p>
+                </div>
+              `, { className: 'dark-popup' });
 
             marker.on('click', () => onSelect(station));
-            marker.addTo(map);
-            markersRef.current.set(station._id, marker);
+            markers.push(marker);
         });
+
+        cluster.addLayers(markers);
     }, [stations, selectedId, onSelect]);
 
     return (
         <>
             <style>{`
-        .leaflet-popup-content-wrapper { background: #1e293b; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: #e2e8f0; }
-        .leaflet-popup-tip { background: #1e293b; }
-        .leaflet-control-zoom a { background: #1e293b; color: #94a3b8; border-color: rgba(255,255,255,0.1); }
-        .leaflet-control-zoom a:hover { background: #334155; color: #e2e8f0; }
+        .leaflet-popup-content-wrapper { background: #0f172a; border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 16px; color: #e2e8f0; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4); }
+        .leaflet-popup-tip { background: #0f172a; border: 1px solid rgba(6, 182, 212, 0.2); }
+        .leaflet-control-zoom a { background: #1e293b; color: #94a3b8; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 8px !important; margin-bottom: 4px; }
+        .leaflet-control-zoom a:hover { background: #334155; color: #06b6d4; }
+        .leaflet-popup-content { margin: 12px; }
+        
+        /* Marker Cluster Custom Styles - Cyan/Blue Theme */
+        .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large {
+          background-color: rgba(6, 182, 212, 0.15);
+        }
+        .marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div {
+          background-color: rgba(6, 182, 212, 0.6);
+          color: white;
+          font-weight: 800;
+          font-family: 'Inter', sans-serif;
+          box-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
+          border: 1px solid rgba(255,255,255,0.2);
+        }
+        .marker-cluster div {
+          width: 32px;
+          height: 32px;
+          margin-left: 4px;
+          margin-top: 4px;
+          text-align: center;
+          border-radius: 50%;
+          font-size: 11px;
+          line-height: 32px;
+        }
       `}</style>
             <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
         </>
     );
 }
+

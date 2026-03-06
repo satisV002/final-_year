@@ -114,12 +114,16 @@ async function getPinCode(village: string | null | undefined, district?: string)
 // ─────────────────────────────────────────────────────────────────────────────
 export async function fetchAndSaveGroundwaterData(
   state: string,
-  district: string,
+  district?: string,
   agencyName: string = 'CGWB',
   startdate: string = '2023-01-01',
   enddate: string = new Date().toISOString().split('T')[0],
 ): Promise<void> {
-  logger.info(`🌊 Starting WRIS fetch → State: ${state} | District: ${district} | Agency: ${agencyName}`);
+  logger.info(
+    `🌊 Starting WRIS fetch → State: ${state}` +
+      (district ? ` | District: ${district}` : '') +
+      ` | Agency: ${agencyName}`
+  );
   logger.info(`📅 Date range: ${startdate} → ${enddate}`);
 
   let page = 0;
@@ -128,15 +132,17 @@ export async function fetchAndSaveGroundwaterData(
   let totalFetched = 0;
 
   while (true) {
-    const params = {
+    const params: any = {
       stateName: state,
-      districtName: district,
       agencyName,
       startdate,
       enddate,
       page,
       size,
     };
+    if (district) {
+      params.districtName = district;
+    }
 
     let records: any[] = [];
     let retries = 0;

@@ -29,6 +29,12 @@ const stats = [
     { val: '2026', label: 'Forecast Ready', icon: TrendingUp, color: 'text-green-400' },
 ];
 
+const teamMembers = [
+    { name: 'Dr. Aarav Sharma', role: 'Chief Hydrologist', desc: 'Expert in aquifer mapping with 15+ years at CGWB.' },
+    { name: 'Priya Iyer', role: 'ML Engineer', desc: 'Specializes in spatial-temporal forecasting and LSTM models.' },
+    { name: 'Satish Vadlamuri', role: 'Full Stack Lead', desc: 'Architecting the AquaWatch India digital ecosystem.' },
+];
+
 const howItWorks = [
     { step: '01', title: 'Register & Login', desc: 'Create a free account to access the full monitoring platform.' },
     { step: '02', title: 'Search & Filter', desc: 'Select state, district, station, and date range to query live WRIS data.' },
@@ -59,48 +65,64 @@ export default function HomePage() {
 
             {/* ── HERO ── */}
             <section className="relative pt-32 pb-24 px-6 text-center overflow-hidden">
-                {/* BG glows */}
+                {/* Ambient background orbs */}
                 <div className="absolute inset-0 pointer-events-none">
-                    <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[700px] h-[700px] bg-cyan-500/5 rounded-full blur-3xl" />
-                    <div className="absolute top-40 left-1/4 w-96 h-96 bg-blue-500/8 rounded-full blur-3xl" />
-                    <div className="absolute top-40 right-1/4 w-96 h-96 bg-teal-500/6 rounded-full blur-3xl" />
+                    <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-cyan-500/8 rounded-full blur-3xl" />
+                    <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-blue-500/8 rounded-full blur-3xl" />
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-teal-500/5 rounded-full blur-3xl" />
+                    {/* Subtle grid */}
+                    <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(rgba(6,182,212,1) 1px, transparent 1px), linear-gradient(90deg, rgba(6,182,212,1) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
                 </div>
-
-                <motion.div
-                    className="relative z-10 max-w-4xl mx-auto"
-                    initial={{ opacity: 0, y: 40 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.7 }}
-                >
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-cyan-500/10 border border-cyan-500/20 rounded-full text-cyan-400 text-xs font-medium mb-6">
+                <div className="relative z-10 max-w-4xl mx-auto">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.5 }}
+                        className="inline-flex items-center gap-2 px-4 py-1.5 bg-cyan-500/10 border border-cyan-500/20 rounded-full text-cyan-400 text-xs font-medium mb-6"
+                    >
                         <span className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
                         Real-time Monitoring Active · CGWB Data
-                    </div>
+                    </motion.div>
 
-                    <h1 className="text-5xl md:text-7xl font-bold text-white leading-tight mb-6">
+                    <motion.h1
+                        className="text-5xl md:text-7xl font-bold text-white leading-tight mb-6"
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.2 }}
+                    >
                         Sustainable<br />
                         <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
                             Groundwater
                         </span><br />
                         Management
-                    </h1>
+                    </motion.h1>
 
-                    <p className="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto mb-8 leading-relaxed">
-                        Advanced monitoring and AI-driven prediction for India's DWLR network.
+                    <motion.p
+                        className="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto mb-8 leading-relaxed"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.4 }}
+                    >
+                        Advanced monitoring and AI-driven prediction for India&apos;s DWLR network.
                         Empowering researchers and policymakers with actionable groundwater insights.
-                    </p>
+                    </motion.p>
 
-                    <div className="flex flex-wrap gap-4 justify-center">
-                        <Link href="/register"
-                            className="px-7 py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-xl hover:opacity-90 transition flex items-center gap-2 shadow-xl shadow-cyan-500/25 text-sm">
+                    <motion.div
+                        className="flex flex-wrap gap-4 justify-center"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.6 }}
+                    >
+                        <Link href="/login"
+                            className="px-7 py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-xl hover:scale-105 transition-transform flex items-center gap-2 shadow-xl shadow-cyan-500/25 text-sm">
                             Open Dashboard <ArrowRight className="w-4 h-4" />
                         </Link>
                         <Link href="/about"
                             className="px-7 py-3.5 bg-white/5 border border-white/10 text-slate-300 font-semibold rounded-xl hover:bg-white/10 transition text-sm">
                             Learn More
                         </Link>
-                    </div>
-                </motion.div>
+                    </motion.div>
+                </div>
 
                 {/* Floating water drop character */}
                 <motion.div
@@ -128,44 +150,77 @@ export default function HomePage() {
 
             {/* ── STATS ── */}
             <section className="py-12 px-6 border-y border-white/5 bg-slate-900/30">
-                <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4">
                     {stats.map((s, i) => (
                         <motion.div key={s.label}
-                            className="text-center"
+                            className="relative overflow-hidden rounded-2xl border border-white/5 p-5 text-center hover:border-white/15 hover:scale-[1.03] transition-all duration-300 group cursor-default bg-slate-900/60 backdrop-blur-sm"
                             custom={i}
                             initial="hidden"
                             whileInView="visible"
                             viewport={{ once: true }}
                             variants={fadeUp}
                         >
-                            <s.icon className={`w-6 h-6 ${s.color} mx-auto mb-2`} />
-                            <p className={`text-3xl font-bold ${s.color}`}>{s.val}</p>
-                            <p className="text-slate-500 text-sm mt-0.5">{s.label}</p>
+                            <div className={`absolute -top-3 -right-3 w-16 h-16 rounded-full blur-2xl opacity-15 group-hover:opacity-30 transition-opacity bg-${s.color.replace('text-', '')}`} />
+                            <s.icon className={`w-6 h-6 ${s.color} mx-auto mb-3`} />
+                            <p className={`text-3xl font-bold tabular-nums ${s.color}`}>{s.val}</p>
+                            <p className="text-slate-500 text-xs mt-1 uppercase tracking-wider">{s.label}</p>
                         </motion.div>
                     ))}
                 </div>
             </section>
 
             {/* ── FEATURES ── */}
-            <section className="py-20 px-6">
+            <section className="py-24 px-6 relative">
                 <div className="max-w-6xl mx-auto">
-                    <motion.div className="text-center mb-14"
+                    <motion.div className="text-center mb-16"
                         initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-                        <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">Everything You Need</h2>
-                        <p className="text-slate-400 max-w-xl mx-auto">Professional-grade groundwater analytics for researchers, policymakers, and water resource managers.</p>
+                        <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">Precision Monitoring</h2>
+                        <p className="text-slate-400 max-w-xl mx-auto">Access industrial-grade tools for groundwater exploration and scientific analysis.</p>
                     </motion.div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {features.map((f, i) => (
                             <motion.div key={f.title}
-                                className={`bg-gradient-to-br ${f.color} border rounded-2xl p-6 hover:scale-[1.02] transition-transform`}
+                                className={`bg-slate-900/50 backdrop-blur-sm border ${f.color} border border-white/5 rounded-3xl p-8 hover:bg-slate-800/80 transition-all group relative overflow-hidden`}
                                 custom={i} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}
+                                whileHover={{ y: -5 }}
                             >
-                                <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center mb-4">
-                                    <f.icon className="w-5 h-5 text-white" />
+                                <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-cyan-500 to-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-cyan-500/10 transition-all">
+                                    <f.icon className="w-6 h-6 text-white group-hover:text-cyan-400 transition-colors" />
                                 </div>
-                                <h3 className="text-white font-semibold mb-2">{f.title}</h3>
+                                <h3 className="text-xl font-bold text-white mb-3">{f.title}</h3>
                                 <p className="text-slate-400 text-sm leading-relaxed">{f.desc}</p>
+                            </motion.div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* ── TEAM SECTION ── */}
+            <section className="py-24 px-6 bg-slate-900/20 border-t border-white/5">
+                <div className="max-w-6xl mx-auto">
+                    <motion.div className="text-center mb-16"
+                        initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+                        <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Meet the Experts</h2>
+                        <p className="text-slate-400">The visionaries behind India&apos;s most advanced groundwater platform.</p>
+                    </motion.div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        {teamMembers.map((m, i) => (
+                            <motion.div key={m.name}
+                                className="bg-slate-950 border border-white/5 rounded-3xl p-8 text-center hover:border-cyan-500/30 transition-all"
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                whileInView={{ opacity: 1, scale: 1 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: i * 0.15 }}
+                            >
+                                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 mx-auto mb-6 flex items-center justify-center font-bold text-2xl text-white shadow-xl shadow-cyan-500/20">
+                                    {m.name.split(' ').map(n => n[0]).join('')}
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-1">{m.name}</h3>
+                                <p className="text-cyan-400 text-sm font-medium mb-4">{m.role}</p>
+                                <p className="text-slate-500 text-sm leading-relaxed">{m.desc}</p>
                             </motion.div>
                         ))}
                     </div>
