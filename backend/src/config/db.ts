@@ -55,6 +55,7 @@ export const connectDB = async (): Promise<void> => {
       logger.warn('MongoDB disconnected - auto-reconnect will try')
     );
   } catch (error: any) {
+    console.error('CRITICAL MONGO CRASH:', error);
     logger.error('MongoDB connection failed', {
       message: error.message,
       stack: error.stack,

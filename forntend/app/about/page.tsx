@@ -88,18 +88,24 @@ export default function AboutPage() {
 
                 {/* Improvement Methods */}
                 <div className="mb-14">
-                    <h2 className="text-2xl font-bold text-white text-center mb-10">Groundwater Improvement Methods</h2>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <motion.h2
+                        className="text-3xl font-extrabold text-white text-center mb-10"
+                        initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+                    >
+                        Groundwater Improvement Methods
+                    </motion.h2>
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {improvements.map((g, i) => (
                             <motion.div key={g.title}
-                                className="relative overflow-hidden bg-slate-900/50 backdrop-blur-sm border border-white/5 rounded-2xl p-6 hover:border-cyan-500/30 transition-all group"
-                                custom={i} initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}
+                                className="relative overflow-hidden bg-slate-900/50 backdrop-blur-md border border-white/5 rounded-3xl p-6 hover:border-cyan-500/40 transition-all duration-300 group shadow-lg hover:shadow-[0_0_30px_rgba(6,182,212,0.15)]"
+                                custom={i} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1, duration: 0.5 }} viewport={{ once: true, margin: "-50px" }}
+                                whileHover={{ y: -5 }}
                             >
-                                <div className="absolute -top-3 -right-3 w-16 h-16 bg-cyan-500 rounded-full blur-2xl opacity-10 group-hover:opacity-25 transition-opacity" />
-                                <div className="relative w-12 h-12 rounded-xl bg-cyan-500/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                    <g.icon className="w-6 h-6 text-cyan-400" />
+                                <div className="absolute -top-10 -right-10 w-24 h-24 bg-cyan-500 rounded-full blur-3xl opacity-10 group-hover:opacity-30 transition-opacity duration-500" />
+                                <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 flex items-center justify-center mb-5 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+                                    <g.icon className="w-7 h-7 text-cyan-400 drop-shadow-md" />
                                 </div>
-                                <h3 className="relative text-white font-semibold mb-2">{g.title}</h3>
+                                <h3 className="relative text-xl text-white font-bold mb-2 group-hover:text-cyan-300 transition-colors">{g.title}</h3>
                                 <p className="relative text-slate-400 text-sm leading-relaxed">{g.desc}</p>
                             </motion.div>
                         ))}

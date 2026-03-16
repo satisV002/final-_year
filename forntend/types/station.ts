@@ -23,6 +23,15 @@ export interface AnalysisResult {
     rainfallTrend: string;
     impact: string;
     stationDetails?: Station;
+    stationId?: string;
+    correlationScore?: number;
+    predictedNextMonthStatus?: string;
+    recommendation?: string;
+    recentData?: {
+        avgLevel: number;
+        avgRainfall: number;
+        season: string;
+    };
 }
 
 /**
@@ -33,6 +42,7 @@ export interface StationRecord extends Station {
     date: string;
     waterLevelMbgl: number;
     trend?: string;
+    rainfall?: number;
 }
 
 export interface GroundwaterRecord {

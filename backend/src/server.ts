@@ -40,6 +40,7 @@ const startServer = async () => {
       logger.info(`Server running → http://localhost:${env.PORT}`);
     });
   } catch (err: any) {
+    console.error('CRITICAL SERVER CRASH:', err);
     logger.error('Server startup failed', { error: err.message });
     process.exit(1);
   }

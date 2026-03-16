@@ -149,21 +149,21 @@ export default function HomePage() {
             </section>
 
             {/* ── STATS ── */}
-            <section className="py-12 px-6 border-y border-white/5 bg-slate-900/30">
-                <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4">
+            <section className="py-20 px-6 border-y border-white/5 bg-gradient-to-b from-slate-900/30 to-slate-950/30">
+                <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6">
                     {stats.map((s, i) => (
                         <motion.div key={s.label}
-                            className="relative overflow-hidden rounded-2xl border border-white/5 p-5 text-center hover:border-white/15 hover:scale-[1.03] transition-all duration-300 group cursor-default bg-slate-900/60 backdrop-blur-sm"
+                            className="relative overflow-hidden rounded-3xl border border-white/5 p-6 text-center hover:border-white/20 hover:scale-[1.05] transition-all duration-500 group cursor-default bg-slate-900/80 backdrop-blur-md shadow-2xl"
                             custom={i}
-                            initial="hidden"
-                            whileInView="visible"
-                            viewport={{ once: true }}
-                            variants={fadeUp}
+                            initial={{ opacity: 0, y: 40 }}
+                            whileInView={{ opacity: 1, y: 0, transition: { duration: 0.6, delay: i * 0.1, ease: 'easeOut' } }}
+                            viewport={{ once: true, margin: "-50px" }}
                         >
-                            <div className={`absolute -top-3 -right-3 w-16 h-16 rounded-full blur-2xl opacity-15 group-hover:opacity-30 transition-opacity bg-${s.color.replace('text-', '')}`} />
-                            <s.icon className={`w-6 h-6 ${s.color} mx-auto mb-3`} />
-                            <p className={`text-3xl font-bold tabular-nums ${s.color}`}>{s.val}</p>
-                            <p className="text-slate-500 text-xs mt-1 uppercase tracking-wider">{s.label}</p>
+                            <div className={`absolute inset-0 bg-gradient-to-br from-transparent to-${s.color.replace('text-', '')}/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+                            <div className={`absolute -top-10 -right-10 w-24 h-24 rounded-full blur-3xl opacity-20 group-hover:opacity-50 transition-opacity duration-500 bg-${s.color.replace('text-', '')}`} />
+                            <s.icon className={`w-8 h-8 ${s.color} mx-auto mb-4 group-hover:scale-110 transition-transform duration-300 drop-shadow-lg`} />
+                            <p className={`text-4xl font-extrabold tabular-nums ${s.color} drop-shadow-[0_0_10px_rgba(255,255,255,0.1)]`}>{s.val}</p>
+                            <p className="text-slate-400 text-sm mt-2 uppercase tracking-widest font-semibold">{s.label}</p>
                         </motion.div>
                     ))}
                 </div>

@@ -42,7 +42,7 @@ export default function LoginPage() {
             await login(email, password);
             setIsSuccess(true);
             // Small delay to show success animation before redirect
-            setTimeout(() => router.push('/home'), 1200);
+            setTimeout(() => router.push('/about'), 1200);
         } catch { /* error shown via context */ }
     };
 
@@ -59,7 +59,7 @@ export default function LoginPage() {
 
             {/* ── RIGHT: Form (Shifted slightly right) ── */}
             <motion.div
-                className="relative z-10 flex flex-col justify-center w-full max-w-md px-8 py-12 lg:px-12 lg:ml-auto bg-slate-900/40 backdrop-blur-sm border-l border-white/5"
+                className="relative z-10 flex flex-col justify-center w-full max-w-md px-8 py-12 lg:px-12 lg:ml-auto lg:mr-16 xl:mr-24 bg-slate-900/40 backdrop-blur-sm border-l border-white/5"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6, ease: "easeOut" }}

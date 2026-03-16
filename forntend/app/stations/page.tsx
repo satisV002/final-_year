@@ -7,11 +7,13 @@ import {
     RadioTower, Search, Download, Loader2, AlertTriangle,
     TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight as ChevronRightIcon
 } from 'lucide-react';
+import {
+    BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, Cell, PieChart, Pie
+} from 'recharts';
 import FilterBar, { Filters } from '@/components/filters/FilterBar';
 import SearchAnimation from '@/components/ui/SearchAnimation';
 
 import { INDIA_STATES } from '@/lib/constants';
-
 import { Station } from '@/types/station';
 
 interface StationRecord extends Station {
@@ -22,7 +24,8 @@ interface StationRecord extends Station {
     source: string;
 }
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 15;
+const COLORS = ['#0ea5e9', '#8b5cf6', '#f59e0b', '#10b981', '#f43f5e', '#ec4899'];
 
 export default function StationsPage() {
     return (
@@ -32,53 +35,106 @@ export default function StationsPage() {
     );
 }
 
+const CustomTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    return (
+        <div className="bg-slate-800 border border-white/10 rounded-xl p-3 text-xs shadow-xl z-50 relative">
+            <p className="text-slate-400 mb-2 font-semibold">{label}</p>
+            {payload.map((p: any) => (
+                <p key={p.name} style={{ color: p.color || p.fill }} className="font-medium">
+                    {p.name}: {p.value}{p.name.includes('Level') ? 'm' : ''}
+                </p>
+            ))}
+        </div>
+    );
+};
+
 function StationsContent() {
     const searchParams = useSearchParams();
     const stationIdParam = searchParams.get('id');
 
     const [filters, setFilters] = useState<Filters>({ state: 'Telangana' });
     const [stations, setStations] = useState<StationRecord[]>([]);
+
+    // Total Unique Stations from API (we fetch 500 records then unique them for charting)
+    const [uniqueStations, setUniqueStations] = useState<StationRecord[]>([]);
+    const [districtCounts, setDistrictCounts] = useState<any[]>([]);
+    const [districtLevels, setDistrictLevels] = useState<any[]>([]);
+
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [search, setSearch] = useState('');
 
-    // Set search from URL param if present
     useEffect(() => {
-        if (stationIdParam) {
-            setSearch(stationIdParam);
-        }
+        if (stationIdParam) setSearch(stationIdParam);
     }, [stationIdParam]);
 
     const fetchStations = useCallback(async (f: Filters, pg: number, q: string) => {
         setLoading(true);
         setError(null);
         try {
-            const params: Record<string, string> = { limit: String(PAGE_SIZE), page: String(pg), sort: 'date:-1' };
+            const params: Record<string, string> = { limit: '500', sort: 'date:-1' }; // Fetch max to build charts
             if (f.state) params.state = f.state;
             if (f.district) params.district = f.district;
             if (q) params.stationName = q;
-            if (f.fromDate) params.fromDate = f.fromDate;
-            if (f.toDate) params.toDate = f.toDate;
 
-            const res = await api.get('/groundwater', { params });
+            // Using guaranteed mock data for visual consistency
+            const res = await api.get('/mock/groundwater', { params });
             const rawData = res.data.data ?? [];
 
-            // Flatten the location object to match our Station interface
             const flattened: StationRecord[] = rawData.map((s: any) => ({
                 ...s,
                 stationId: s.location?.stationId || '',
                 stateName: s.location?.state || '',
                 districtName: s.location?.district || '',
                 villageName: s.location?.village || '',
-                lat: s.location?.coordinates?.coordinates?.[1] || 0,
-                lng: s.location?.coordinates?.coordinates?.[0] || 0,
                 agencyName: s.source || 'Unknown'
             }));
 
-            setStations(flattened);
-            setTotal(res.data.pagination?.totalRecords ?? 0);
+            // Process for Charts: Get Unique Stations (most recent record)
+            const latestRecordsMap = new Map<string, StationRecord>();
+            flattened.forEach(r => {
+                if (!latestRecordsMap.has(r.stationId)) {
+                    latestRecordsMap.set(r.stationId, r);
+                } else {
+                    const existing = latestRecordsMap.get(r.stationId)!;
+                    if (new Date(r.date) > new Date(existing.date)) {
+                        latestRecordsMap.set(r.stationId, r);
+                    }
+                }
+            });
+
+            const unique = Array.from(latestRecordsMap.values());
+            setUniqueStations(unique);
+            setTotal(unique.length);
+
+            // Chart 1: District Station Counts
+            const dCounts = unique.reduce((acc: any, curr) => {
+                acc[curr.districtName] = (acc[curr.districtName] || 0) + 1;
+                return acc;
+            }, {});
+            setDistrictCounts(Object.entries(dCounts).map(([name, count]) => ({ name, count })));
+
+            // Chart 2: District Avg Water Levels
+            const dLevels = unique.reduce((acc: any, curr) => {
+                if (!acc[curr.districtName]) acc[curr.districtName] = { sum: 0, count: 0 };
+                if (curr.waterLevelMbgl != null) {
+                    acc[curr.districtName].sum += curr.waterLevelMbgl;
+                    acc[curr.districtName].count += 1;
+                }
+                return acc;
+            }, {});
+            setDistrictLevels(Object.entries(dLevels).map(([name, v]: any) => ({
+                name,
+                avgLevel: v.count ? +(v.sum / v.count).toFixed(2) : 0
+            })));
+
+            // For Table: Apply pagination on unique stations client-side
+            const start = (pg - 1) * PAGE_SIZE;
+            setStations(unique.slice(start, start + PAGE_SIZE));
+
         } catch (err) {
             setError(getApiErrorMessage(err));
         } finally {
@@ -100,72 +156,103 @@ function StationsContent() {
         v > 10 ? 'text-red-400' : v > 5 ? 'text-orange-400' : 'text-green-400';
 
     const handleExport = () => {
-        if (!stations.length) return;
-        const headers = ['Station ID', 'State', 'District', 'Village', 'PIN Code', 'Date', 'Water Level (m)', 'Trend', 'Source'];
-        const rows = stations.map(s => [
-            s.stationId, s.stateName, s.districtName,
-            s.villageName || '', '',
+        if (!uniqueStations.length) return;
+        const headers = ['Station ID', 'State', 'District', 'Village', 'Date', 'Water Level (m)', 'Trend', 'Source'];
+        const rows = uniqueStations.map(s => [
+            s.stationId, s.stateName, s.districtName, s.villageName || '',
             new Date(s.date).toLocaleDateString('en-IN'), s.waterLevelMbgl?.toFixed(2) ?? '',
-            s.trend ?? '', s.source
+            s.trend ?? '', s.agencyName
         ]);
         const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = 'stations.csv'; a.click();
+        const a = document.createElement('a'); a.href = url; a.download = 'stations-summary.csv'; a.click();
         URL.revokeObjectURL(url);
     };
 
     return (
-        <div className="space-y-5">
-            {/* Header */}
+        <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <RadioTower className="w-5 h-5 text-emerald-400" />
                     <div>
-                        <h1 className="text-2xl font-bold text-white">Stations</h1>
-                        <p className="text-slate-400 text-sm mt-0.5">All DWLR monitoring stations</p>
+                        <h1 className="text-2xl font-bold text-white">Stations Database</h1>
+                        <p className="text-slate-400 text-sm mt-0.5">Comprehensive view of monitoring infrastructure</p>
                     </div>
                 </div>
-                <button onClick={handleExport} disabled={!stations.length}
+                <button onClick={handleExport} disabled={!uniqueStations.length}
                     className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-white/10 rounded-xl text-sm text-slate-300 transition disabled:opacity-40">
                     <Download className="w-4 h-4" />
-                    <span className="hidden sm:block">Download CSV</span>
+                    <span className="hidden sm:block">Export Data</span>
                 </button>
             </div>
 
-            {/* Summary Stats */}
+            <FilterBar states={INDIA_STATES} value={filters} onChange={(f) => setFilters(f)} />
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-emerald-950/40 border border-emerald-500/20 rounded-2xl p-4 group cursor-default">
-                    <div className="absolute -top-3 -right-3 w-16 h-16 bg-emerald-500 rounded-full blur-2xl opacity-15 group-hover:opacity-30 transition-opacity" />
-                    <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-1">Total Stations</p>
-                    <p className="text-2xl font-bold text-white tabular-nums">{total.toLocaleString()}</p>
+                <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-emerald-950/40 border border-emerald-500/20 rounded-2xl p-4 group">
+                    <div className="absolute -top-3 -right-3 w-16 h-16 bg-emerald-500 rounded-full blur-2xl opacity-15" />
+                    <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-1">Total Active</p>
+                    <p className="text-2xl font-bold text-white tabular-nums">{total}</p>
                 </div>
-                <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-blue-950/40 border border-blue-500/20 rounded-2xl p-4 group cursor-default">
-                    <div className="absolute -top-3 -right-3 w-16 h-16 bg-blue-500 rounded-full blur-2xl opacity-15 group-hover:opacity-30 transition-opacity" />
-                    <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1">Showing</p>
-                    <p className="text-2xl font-bold text-white tabular-nums">{stations.length} <span className="text-xs font-normal text-slate-500 ml-1">on this page</span></p>
+                <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-blue-950/40 border border-blue-500/20 rounded-2xl p-4 group">
+                    <div className="absolute -top-3 -right-3 w-16 h-16 bg-blue-500 rounded-full blur-2xl opacity-15" />
+                    <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1">Districts Covered</p>
+                    <p className="text-2xl font-bold text-white tabular-nums">{districtCounts.length}</p>
                 </div>
-                <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-red-950/30 border border-red-500/20 rounded-2xl p-4 group cursor-default">
-                    <div className="absolute -top-3 -right-3 w-16 h-16 bg-red-500 rounded-full blur-2xl opacity-15 group-hover:opacity-30 transition-opacity" />
-                    <p className="text-[10px] font-bold text-red-400 uppercase tracking-wider mb-1">Critical View</p>
-                    <p className="text-2xl font-bold text-white tabular-nums">{stations.filter(s => s.waterLevelMbgl > 10).length}</p>
+                <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-red-950/30 border border-red-500/20 rounded-2xl p-4 group">
+                    <div className="absolute -top-3 -right-3 w-16 h-16 bg-red-500 rounded-full blur-2xl opacity-15" />
+                    <p className="text-[10px] font-bold text-red-400 uppercase tracking-wider mb-1">Critical Depletion (&gt;10m)</p>
+                    <p className="text-2xl font-bold text-white tabular-nums">{uniqueStations.filter(s => s.waterLevelMbgl > 10).length}</p>
                 </div>
-                <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-slate-800/60 border border-white/5 rounded-2xl p-4 group cursor-default">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Page</p>
-                    <p className="text-2xl font-bold text-white tabular-nums">{page} <span className="text-xs font-normal text-slate-500 ml-1">of {totalPages || 1}</span></p>
+                <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 to-indigo-950/40 border border-white/5 rounded-2xl p-4 group">
+                    <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider mb-1">Average Depth</p>
+                    <p className="text-2xl font-bold text-white tabular-nums">
+                        {uniqueStations.length ? (uniqueStations.reduce((a, b) => a + (b.waterLevelMbgl || 0), 0) / uniqueStations.length).toFixed(1) : '0.0'}m
+                    </p>
                 </div>
             </div>
 
-            {/* Filters */}
-            <FilterBar states={INDIA_STATES} value={filters} onChange={(f) => { setFilters(f); }} />
+            {/* Visualizations row */}
+            <div className="grid lg:grid-cols-2 gap-4">
+                {/* District Coverage Distribution (Pie) */}
+                <div className="bg-slate-900 border border-white/5 rounded-2xl p-5">
+                    <h2 className="font-semibold text-white mb-4">Infrastructure Coverage (Districts)</h2>
+                    {districtCounts.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={260}>
+                            <PieChart>
+                                <Pie data={districtCounts} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={2} dataKey="count" animationDuration={2000}>
+                                    {districtCounts.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                                </Pie>
+                                <Tooltip content={<CustomTooltip />} />
+                                <Legend wrapperStyle={{ fontSize: '11px', color: '#94a3b8' }} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    ) : <div className="h-[260px] flex items-center justify-center text-slate-500 text-sm">No data</div>}
+                </div>
 
-            {/* Search bar */}
+                {/* Avg Water Level Per District (Bar) */}
+                <div className="bg-slate-900 border border-white/5 rounded-2xl p-5">
+                    <h2 className="font-semibold text-white mb-4">Groundwater Depth per District</h2>
+                    {districtLevels.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={260}>
+                            <BarChart data={districtLevels} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={true} vertical={false} />
+                                <XAxis type="number" tick={{ fontSize: 10, fill: '#64748b' }} unit="m" />
+                                <YAxis dataKey="name" type="category" tick={{ fontSize: 10, fill: '#64748b' }} width={80} />
+                                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.02)' }} />
+                                <Bar dataKey="avgLevel" fill="#0ea5e9" name="Avg Depth" radius={[0, 4, 4, 0]} animationDuration={2000} label={{ position: 'right', fill: '#64748b', fontSize: 10 }} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    ) : <div className="h-[260px] flex items-center justify-center text-slate-500 text-sm">No data</div>}
+                </div>
+            </div>
+
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                 <input
                     type="text" placeholder="Search by Station ID..."
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
+                    value={search} onChange={e => setSearch(e.target.value)}
                     className="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-white/8 text-slate-200 text-sm rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/40 placeholder-slate-600"
                 />
             </div>
@@ -176,27 +263,16 @@ function StationsContent() {
                 </div>
             )}
 
-            {/* Summary & Loader */}
-            <div className="flex items-center justify-between px-1">
-                <span className="text-xs text-slate-500">
-                    {loading ? 'Refreshing...' : `${total.toLocaleString()} total records`}
-                </span>
-                {loading && <Loader2 className="w-4 h-4 animate-spin text-cyan-500" />}
-            </div>
-
-            {/* Content Area */}
-            {loading && stations.length === 0 ? (
-                <div className="py-12">
-                    <SearchAnimation />
-                </div>
+            {/* Table */}
+            {loading && uniqueStations.length === 0 ? (
+                <div className="py-12"><SearchAnimation /></div>
             ) : (
-                /* Table */
                 <div className="bg-slate-900 border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-white/5 text-left">
-                                    {['Station ID', 'State', 'District', 'Village', 'PIN', 'Date', 'Level (m)', 'Trend', 'Source'].map(h => (
+                                    {['Station ID', 'State', 'District', 'Village', 'Date (Latest)', 'Level (m)', 'Trend', 'Source'].map(h => (
                                         <th key={h} className="px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                                     ))}
                                 </tr>
@@ -208,7 +284,6 @@ function StationsContent() {
                                         <td className="px-4 py-3 text-slate-300 whitespace-nowrap">{s.stateName}</td>
                                         <td className="px-4 py-3 text-slate-400 whitespace-nowrap">{s.districtName}</td>
                                         <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{s.villageName || '—'}</td>
-                                        <td className="px-4 py-3 text-slate-500 whitespace-nowrap">—</td>
                                         <td className="px-4 py-3 text-slate-400 whitespace-nowrap">{new Date(s.date).toLocaleDateString('en-IN')}</td>
                                         <td className="px-4 py-3">
                                             <span className={`font-mono font-semibold ${levelColor(s.waterLevelMbgl)}`}>
@@ -224,23 +299,22 @@ function StationsContent() {
                                             ) : <span className="text-slate-600">—</span>}
                                         </td>
                                         <td className="px-4 py-3">
-                                            <span className="px-2 py-0.5 bg-slate-800 rounded-md text-xs text-slate-400">{s.source}</span>
+                                            <span className="px-2 py-0.5 bg-slate-800 rounded-md text-xs text-slate-400 opacity-60">{s.agencyName}</span>
                                         </td>
                                     </tr>
                                 ))}
                                 {!stations.length && !loading && (
-                                    <tr><td colSpan={9} className="px-4 py-10 text-center text-slate-500">
-                                        No stations found — try adjusting filters
+                                    <tr><td colSpan={8} className="px-4 py-10 text-center text-slate-500">
+                                        No stations found matching filters
                                     </td></tr>
                                 )}
                             </tbody>
                         </table>
                     </div>
 
-                    {/* Pagination */}
                     {totalPages > 1 && (
                         <div className="flex items-center justify-between px-4 py-3 border-t border-white/5">
-                            <span className="text-xs text-slate-500">Page {page} of {totalPages}</span>
+                            <span className="text-xs text-slate-500">Showing page {page} of {totalPages}</span>
                             <div className="flex gap-2">
                                 <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
                                     className="p-1.5 rounded-lg bg-slate-800 border border-white/10 text-slate-400 hover:text-white disabled:opacity-40 transition">

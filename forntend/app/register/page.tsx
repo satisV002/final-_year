@@ -79,7 +79,7 @@ export default function RegisterPage() {
         try {
             await register(fullname.trim(), email, password);
             setIsSuccess(true);
-            setTimeout(() => router.push('/home'), 1200);
+            setTimeout(() => router.push('/about'), 1200);
         } catch { /* error shown via context */ }
     };
 
@@ -93,9 +93,9 @@ export default function RegisterPage() {
                 <div className="absolute -bottom-48 -left-48 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl" />
             </div>
 
-            {/* ── LEFT: Form ── */}
+            {/* ── LEFT: Form (Shifted slightly right from left edge) ── */}
             <motion.div
-                className="relative z-10 flex flex-col justify-center w-full max-w-md px-8 py-10 lg:px-12"
+                className="relative z-10 flex flex-col justify-center w-full max-w-md px-8 py-10 lg:px-12 lg:ml-16 xl:ml-24"
                 initial={{ opacity: 0, x: -30 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5 }}
