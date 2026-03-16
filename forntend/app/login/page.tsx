@@ -42,7 +42,7 @@ export default function LoginPage() {
             await login(email, password);
             setIsSuccess(true);
             // Small delay to show success animation before redirect
-            setTimeout(() => router.push('/about'), 1200);
+            setTimeout(() => router.push('/overview'), 1200);
         } catch { /* error shown via context */ }
     };
 

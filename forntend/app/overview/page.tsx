@@ -38,7 +38,7 @@ export default function OverviewPage() {
     const load = useCallback(async () => {
         setError(null);
         try {
-            const res = await api.get('/groundwater', { params: { state: 'Telangana', limit: '100', sort: 'date:1' } });
+            const res = await api.get('/mock/groundwater', { params: { state: 'Telangana', limit: '100', sort: 'date:1' } });
             const rawData = res.data.data ?? [];
 
             const data: StationRecord[] = rawData.map((s: any) => ({

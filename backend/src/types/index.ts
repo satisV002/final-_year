@@ -14,6 +14,7 @@ export interface ILocation {
   village?: string;
   pinCode?: string;
   stationId?: string;
+  stationName?: string;
   coordinates?: {
     type: 'Point';
     coordinates: [number, number]; // [lng, lat]

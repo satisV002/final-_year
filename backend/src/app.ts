@@ -15,6 +15,7 @@ import authRouter from './routes/auth';
 import liveDataRouter from './routes/liveData';
 import devRoutes from './routes/devRoutes';
 import mockDataRouter from './routes/mockData';
+import proxyRouter from './routes/proxy';
 
 const createApp = (): Express => {
   const app = express();
@@ -61,6 +62,7 @@ const createApp = (): Express => {
   app.use('/api/v1/auth', authRouter);          // Public: Signup/Login
   app.use('/api/v1', groundwaterRouter);        // Groundwater endpoints
   app.use('/api/v1', liveDataRouter);              // Live Data endpoints
+  app.use('/api/v1', proxyRouter);                 // Generic Proxy endpoint
   app.use('/api/v1/mock', mockDataRouter);      // GUARANTEED MOCK DATA API 500+ Records
   app.use('/dev', devRoutes);                   // Dev / Self-Test endpoints
 

@@ -1,6 +1,6 @@
 import axios from 'axios';
 import logger from '../utils/logger';
-import { getStationById } from './stationLoader.service';
+import { getStationById, Station } from './stationLoader.service';
 
 const WRIS_API_URL = 'https://indiawris.gov.in/wris/api/groundwater';
 
@@ -9,6 +9,7 @@ export interface WRISApiResponse {
     data?: any[];
     message?: string;
     warning?: string;
+    isFallback?: boolean;
 }
 
 export const fetchLiveGroundwater = async (stationId: string): Promise<WRISApiResponse> => {
@@ -74,16 +75,51 @@ export const fetchLiveGroundwater = async (stationId: string): Promise<WRISApiRe
 
     } catch (error: any) {
         if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
-            logger.warn(`WRIS server timeout for station ${stationId}`);
-            return { success: false, message: 'WRIS server timeout' };
+            logger.warn(`WRIS server timeout for station ${stationId}. Returning fallback data.`);
+            return getFallbackData(station);
         }
 
         if (error.response && error.response.status === 400) {
-            logger.warn(`Invalid dates or bad request to WRIS API for station ${stationId}`);
-            return { success: false, message: 'Invalid request to WRIS API' };
+            logger.warn(`Invalid dates or bad request to WRIS API for station ${stationId}. Returning fallback data.`);
+            return getFallbackData(station);
         }
 
-        logger.error('Unexpected WRIS API error', { error: error.message, stationId });
-        return { success: false, message: 'WRIS API failure' };
+        logger.error('Unexpected WRIS API error, returning fallback', { error: error.message, stationId });
+        return getFallbackData(station);
     }
+};
+
+/**
+ * GENERATES MOCK DATA FOR FALLBACK
+ */
+const getFallbackData = (station: Station): WRISApiResponse => {
+    const data = [];
+    const today = new Date();
+    
+    // Generate 12 months of mock data
+    for (let i = 12; i >= 0; i--) {
+        const d = new Date();
+        d.setMonth(today.getMonth() - i);
+        
+        const month = d.getMonth();
+        const isMonsoon = month >= 5 && month <= 9;
+        
+        // Base level around 8-12m
+        let level = 10 + (Math.random() - 0.5) * 2;
+        if (isMonsoon) level -= 2; // Better (lower) in monsoon
+        else level += 1; // Worse in summer
+        
+        data.push({
+            date: d.toISOString(),
+            level: Number(level.toFixed(2)),
+            agency: 'MOCK-FALLBACK'
+        });
+    }
+
+    return {
+        success: true,
+        data,
+        isFallback: true,
+        warning: 'Falling back to generated mock data due to external API unavailability'
+    };
 };

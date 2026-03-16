@@ -69,7 +69,7 @@ export default function MapPage() {
                 stationsData = rawData.map((s: any) => ({
                     ...s,
                     stationId: s.location?.stationId || '',
-                    stationName: s.location?.village || s.location?.stationId || 'Unknown',
+                    stationName: s.location?.stationName || s.location?.village || s.location?.stationId || 'Unknown Station',
                     stateName: s.location?.state || '',
                     districtName: s.location?.district || '',
                     villageName: s.location?.village || '',
